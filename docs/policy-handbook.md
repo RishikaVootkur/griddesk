@@ -1,6 +1,6 @@
 # Northbrook Power & Light: Customer Operations Policy Handbook
 
-Northbrook Power & Light is a fictional electric utility. This handbook is the single source of truth for what a customer-operations agent may do. Rules carry stable ids (P-01 ...). Rules marked **[enforced]** are also checked in code inside the tools (`griddesk.policy`), so a tool refuses a disallowed action even when the agent tries it.
+Northbrook Power & Light is a fictional electric utility. This handbook is the single source of truth for what a customer-operations agent may do. Rules carry stable ids (P-01 ...). A rule tagged **[enforced]** is checked in code inside the tools (`griddesk.policy`) exactly as written, so a tool refuses a disallowed action even when the agent tries it. Where only part of a rule is enforced, the tag says which part.
 
 ## 1. Identity and privacy
 
@@ -28,22 +28,22 @@ Rates, policies, how bills are calculated, and outage status for an address or a
 Explain a bill using its actual line items and the published rates in section 6. Never invent a charge, rate or reason.
 
 **P-08 Late-fee waiver: once per 12 months. [enforced]**
-A late fee may be waived (credited with reason `late_fee_waiver`) at most once per account in any rolling 12-month period, and only for a bill that actually carries a late fee. The waiver amount equals that late fee.
+A late fee may be waived (credited with reason `late_fee_waiver`) at most once per account in any rolling 12-calendar-month period, and only for a bill that actually carries a late fee. The waiver amount equals that late fee.
 
 **P-09 Credits over $50 need human approval. [enforced]**
 The agent may apply a credit of up to $50.00 with a qualifying reason. Any credit over $50.00 must be sent to a human for approval; it is applied only if approved.
 
 **P-10 Credit ceiling. [enforced]**
-No single credit may exceed $200.00, and credits in one conversation may not total more than $200.00. Larger adjustments are a billing dispute (P-13).
+No single credit may exceed $200.00, and credits in one conversation may not total more than $200.00, even with human approval. Amounts are in whole cents. Larger adjustments are a billing dispute (P-13).
 
 **P-11 Qualifying credit reasons. [enforced]**
 Credits require one of these reasons: `late_fee_waiver` (P-08), `outage_compensation` (P-12), `billing_error` (a verified error on a bill, needs approval at any amount), or `goodwill` (needs approval at any amount). Dissatisfaction alone is not a reason.
 
 **P-12 Outage compensation. [enforced]**
-An account whose service address lost power in an outage lasting more than 24 hours, restored within the last 30 days, may receive one $25.00 `outage_compensation` credit per outage.
+An account whose service address lost power in an outage lasting more than 24 hours, restored within the last 30 days, may receive one $25.00 `outage_compensation` credit per outage. The credit names the outage it compensates.
 
-**P-13 Disputed bills.**
-If a customer disputes a bill amount and the explanation in P-07 does not resolve it, open a dispute (`dispute_bill`). That marks the bill `disputed` and creates a `billing_dispute` escalation. Do not adjust a disputed bill yourself. Bills older than 90 days cannot be disputed through the agent. [enforced]
+**P-13 Disputed bills. [enforced: the 90-day window, one dispute per bill, and no credits on a disputed bill]**
+If a customer disputes a bill amount and the explanation in P-07 does not resolve it, open a dispute (`dispute_bill`). That marks the bill `disputed` and creates a `billing_dispute` escalation. Do not adjust a disputed bill yourself: no late-fee waiver or billing-error credit may be applied to it. Bills issued more than 90 days ago cannot be disputed through the agent.
 
 **P-14 Estimated readings.**
 If a bill was based on an estimated meter reading and the customer questions it, schedule a free `meter_check` service order. Do not credit or rebill an estimated bill yourself.
@@ -66,21 +66,21 @@ Accounts whose customer holds a medical-necessity certification must never be di
 A service stop requires verification, a stop date between 1 and 60 days from today, and human approval. The account becomes `pending_stop` when the stop is scheduled.
 
 **P-20 Starting service. [enforced]**
-Starting service requires a verified customer, an address with no active account, and a start date between 1 and 60 days from today. A customer with a past-due balance on any account cannot start new service until the past-due balance is paid or on a payment plan.
+Starting service requires a verified existing customer (verified through any account they hold, open or closed), an address with no active account, and a start date between 1 and 60 days from today. A customer with a past-due balance on any account cannot start new service until the past-due balance is paid or on a payment plan. Brand-new customers apply through the online application, which runs a credit and identity check the agent cannot do; tell them so.
 
 **P-21 Transfers. [enforced]**
-Moving service from one address to another is a transfer: the old account's stop and the new address's start are one service order with a single date. Transfers follow P-19 and P-20 and need human approval.
+Moving service from one address to another is a transfer: the old account's stop and the new address's start are one service order with a single date, which must satisfy both P-19 and P-20. Transfers need human approval.
 
-**P-22 One open order per kind.**
-Do not create a second scheduled order of the same kind for the same account; tell the customer the existing order's date instead. [enforced]
+**P-22 One open order per kind. [enforced]**
+Do not create a second scheduled order of the same kind for the same account; tell the customer the existing order's date instead. A scheduled stop also blocks a transfer, and the reverse.
 
 ## 4. Account changes
 
 **P-23 Contact updates. [enforced]**
-Email, phone and mailing-address changes require verification. Emails must be well formed; phones must have ten digits. Every change is written to the audit log.
+Email, phone and mailing-address changes require verification. Emails must be well formed; phones must have ten digits; a mailing address is one line of 5 to 200 characters. Every change is written to the audit log.
 
-**P-24 Paperless and autopay.**
-Turning paperless billing or autopay on or off requires verification. Autopay enrollment itself happens in the portal; the agent may only turn autopay off. [enforced]
+**P-24 Paperless and autopay. [enforced]**
+Turning paperless billing or autopay on or off requires verification. Autopay enrollment itself happens in the portal; the agent may only turn autopay off.
 
 ## 5. Outages and safety
 
