@@ -1,0 +1,23 @@
+name: griddesk
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: griddesk
+      POSTGRES_PASSWORD: griddesk
+      POSTGRES_DB: griddesk
+    ports: ["5433:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=60"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U griddesk"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits: {memory: 512m}
+
+volumes:
+  pgdata:
