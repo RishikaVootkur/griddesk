@@ -1,4 +1,4 @@
-.PHONY: setup lint test
+.PHONY: setup lint test up down migrate seed
 
 setup:  ## Install Python and web dependencies and git hooks
 	uv sync
@@ -12,3 +12,15 @@ lint:
 
 test:
 	uv run pytest --cov --cov-report=term-missing:skip-covered
+
+up:  ## Start Postgres (more services join as they land)
+	docker compose up -d postgres
+
+down:
+	docker compose down
+
+migrate: up
+	uv run alembic upgrade head
+
+seed: migrate  ## Reset the LOCAL dev database to the deterministic synthetic seed
+	uv run griddesk db seed
