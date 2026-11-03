@@ -1,8 +1,8 @@
 """SQLAlchemy models for the simulated utility, Northbrook Power & Light (fictional).
 
 Identifiers the model sees (customer, account, bill, plan, order...) are short prefixed strings.
-Rows created during a conversation get ids from `griddesk.ids`, which is deterministic inside an
-eval trial so that cached LLM requests replay byte for byte.
+Rows created during a conversation get ids from `griddesk.runtime.IdGenerator`, which is
+deterministic inside an eval trial so that cached LLM requests replay byte for byte.
 """
 
 from __future__ import annotations

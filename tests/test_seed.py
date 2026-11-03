@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import func, select
 
 from griddesk.db import models as m
-from griddesk.db.seed import CUSTOMER_CHARGE, bill_lines, generate
+from griddesk.db.seed import CUSTOMER_CHARGE, TODAY, bill_lines, generate
 
 
 @pytest.fixture(scope="module")
@@ -14,9 +14,7 @@ def data():
 
 
 def test_generation_is_deterministic(data):
-    again = generate()
-    assert again["customers"] == data["customers"]
-    assert again["bills"][:50] == data["bills"][:50]
+    assert generate() == data
 
 
 def test_volume(data):
@@ -80,17 +78,77 @@ def test_bill_lines_hand_computed():
     }
 
 
+def test_bills_are_issued_before_today_and_paid_after_issue(data):
+    by_id = {b["id"]: b for b in data["bills"]}
+    for b in data["bills"]:
+        assert b["issued_on"] <= TODAY
+    for p in data["payments"]:
+        bill = by_id["B-" + p["id"][3:]]
+        assert bill["issued_on"] <= p["paid_on"] <= TODAY
+
+
+def test_late_fees_only_follow_an_unpaid_prior_bill_or_a_waiver(data):
+    late = {li["bill_id"] for li in data["bill_line_items"] if li["kind"] == "late_fee"}
+    waived = {c["note"].rsplit(" ", 1)[1] for c in data["credits"] if c["reason_code"] == "late_fee_waiver"}
+    bills_by_acct: dict[str, list] = {}
+    for b in data["bills"]:
+        bills_by_acct.setdefault(b["account_id"], []).append(b)
+    for bid in late - waived:
+        acct_bills = bills_by_acct[by_acct_id(bid)]
+        idx = [b["id"] for b in acct_bills].index(bid)
+        assert acct_bills[idx - 1]["status"] == "past_due"
+    assert waived <= late  # every waiver credit points at a bill that carried a late fee
+
+
+def by_acct_id(bill_id: str) -> str:
+    return bill_id.split("-")[1]
+
+
+def test_returned_payments_reopen_their_bill(data):
+    by_id = {b["id"]: b for b in data["bills"]}
+    returned = [p for p in data["payments"] if p["status"] == "returned"]
+    assert returned
+    for p in returned:
+        assert by_id["B-" + p["id"][3:]]["status"] != "paid"
+
+
+def test_plan_installments_cover_the_total(data):
+    for p in data["payment_plans"]:
+        n, inst, total = p["installments"], p["installment_amount"], p["total_amount"]
+        assert inst * (n - 1) < total <= inst * n
+
+
+def test_no_account_has_both_active_plan_and_scheduled_disconnect(data):
+    planned = {p["account_id"] for p in data["payment_plans"] if p["status"] == "active"}
+    disconnects = {o["account_id"] for o in data["service_orders"] if o["kind"] == "disconnect"}
+    assert not planned & disconnects
+    status = {a["id"]: a["status"] for a in data["accounts"]}
+    assert all(status[a] == "disconnect_scheduled" for a in disconnects)
+
+
+def test_load_refuses_remote_hosts():
+    from sqlalchemy import create_engine
+
+    from griddesk.db.seed import load
+
+    remote = create_engine("postgresql+psycopg://u:p@db.example.com/x")
+    with pytest.raises(RuntimeError, match="non-local"):
+        load(remote, {})
+
+
 @pytest.mark.db
-def test_loaded_counts_and_trial_rollback(engine, sessions):
-    with sessions() as s:
-        assert s.scalar(select(func.count()).select_from(m.Customer)) >= 500
-        acct = s.scalars(select(m.Account).limit(1)).one()
-        acct.paperless = not acct.paperless
-        s.commit()
-        flipped = acct.paperless
-    with sessions() as s:
-        assert s.get(m.Account, acct.id).paperless == flipped
-    # After the trial scope (fixture teardown) the change is gone; check with a fresh connection.
+def test_trial_scope_rolls_back(engine):
+    from griddesk.db.session import trial_scope
+
     with engine.connect() as c:
-        val = c.execute(select(m.Account.paperless).where(m.Account.id == acct.id)).scalar_one()
-    assert val != flipped
+        acct_id, before = c.execute(select(m.Account.id, m.Account.paperless).limit(1)).one()
+    with trial_scope(engine) as sessions:
+        with sessions() as s:
+            assert s.scalar(select(func.count()).select_from(m.Customer)) >= 500
+            s.get(m.Account, acct_id).paperless = not before
+            s.commit()
+        with sessions() as s:
+            assert s.get(m.Account, acct_id).paperless is (not before)
+    with engine.connect() as c:
+        after = c.execute(select(m.Account.paperless).where(m.Account.id == acct_id)).scalar_one()
+    assert after is before

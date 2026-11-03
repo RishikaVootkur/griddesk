@@ -11,18 +11,19 @@ from __future__ import annotations
 import random
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
-from decimal import ROUND_HALF_UP, Decimal
+from datetime import date, timedelta
+from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
 from typing import Any
 
 from faker import Faker
 from sqlalchemy import Engine, text
 
+from griddesk.config import get_settings
 from griddesk.db import models as m
 
 SEED = 20261015
 N_CUSTOMERS = 520
-SIM_NOW = datetime(2026, 10, 15, 15, 0, tzinfo=UTC)
+SIM_NOW = get_settings().simulated_now  # one clock for the seed, the tools and the agent
 TODAY = SIM_NOW.date()
 
 CITIES = [
@@ -35,7 +36,7 @@ CITIES = [
 ]
 FEEDERS = [f"F{n:02d}" for n in range(1, 25)]
 
-# Tariff (matches docs/policy-handbook.md section "Rates")
+# Tariff (matches section 6 "Rates" of docs/policy-handbook.md)
 ENERGY_RATE = {
     "residential_standard": Decimal("0.1420"),
     "time_of_use": Decimal("0.1310"),
@@ -169,7 +170,7 @@ def generate(seed: int = SEED, n_customers: int = N_CUSTOMERS) -> dict[str, list
                 prof.recent_waiver = rng.random() < 0.06
                 prof.disconnect_scheduled = prof.past_due and not medical and rng.random() < 0.15
                 prof.returned_payment = rng.random() < 0.03
-            if prof.disconnect_scheduled:
+            if prof.disconnect_scheduled and not (prof.plan_active and prof.past_due):
                 status = "disconnect_scheduled"
             account: Row = {
                 "id": aid,
@@ -184,7 +185,7 @@ def generate(seed: int = SEED, n_customers: int = N_CUSTOMERS) -> dict[str, list
                 "closed_on": TODAY - timedelta(days=rng.randint(30, 300)) if status == "closed" else None,
             }
             out["accounts"].append(account)
-            _bills_for_account(rng, out, account, addr, prof, medical)
+            _bills_for_account(rng, out, account, addr, prof)
 
     for _ in range(40):  # vacant addresses, used by start-service and transfer tasks
         new_address()
@@ -194,15 +195,17 @@ def generate(seed: int = SEED, n_customers: int = N_CUSTOMERS) -> dict[str, list
 
 
 def _bills_for_account(
-    rng: random.Random, out: dict[str, list[Row]], account: Row, addr: Row, prof: Profile, medical: bool
+    rng: random.Random, out: dict[str, list[Row]], account: Row, addr: Row, prof: Profile
 ) -> None:
     aid = account["id"]
     meter_id = "M-" + addr["id"].split("-")[1]
     cycle_day = rng.randint(1, 28)
     base_kwh = rng.randint(350, 1100)
     last_end = account["closed_on"] or TODAY
-    # Find the most recent period end on the cycle day.
+    # The most recent period end on the cycle day whose bill (issued 2 days later) is already out.
     end = last_end.replace(day=cycle_day) if last_end.day >= cycle_day else _prev_month(last_end, cycle_day)
+    while end + timedelta(days=2) > last_end:
+        end = _prev_month(end, cycle_day)
     periods: list[tuple[date, date]] = []
     for _ in range(12):
         start = _prev_month(end, cycle_day)
@@ -210,8 +213,10 @@ def _bills_for_account(
         end = start
     periods.reverse()
 
-    balance = Decimal("0")
     n = len(periods)
+    # A recent late-fee waiver cancelled the late fee on one of the older bills.
+    waiver_index = rng.randint(n - 11, n - 3) if prof.recent_waiver else None
+    bills: list[Row] = []
     for i, (start, end) in enumerate(periods):
         month_factor = 1.0 + 0.35 * abs(6 - end.month) / 6  # winter and summer peaks
         kwh = int(base_kwh * month_factor * rng.uniform(0.85, 1.15))
@@ -229,41 +234,52 @@ def _bills_for_account(
         due = issued + timedelta(days=21)
         bid = f"B-{aid}-{end:%y%m}"
         lines = bill_lines(kwh, account["rate_plan"])
-        # Past-due accounts carry the last two bills unpaid, with a late fee on the newest.
-        unpaid_past_due = prof.past_due and i >= n - 2
-        if unpaid_past_due and latest:
-            lines.append(("late_fee", "Late payment fee", LATE_FEE))
+        # Past-due accounts left the previous bill unpaid, so the newest bill carries a late fee for it.
+        unpaid = prof.past_due and i >= n - 2
+        if (prof.past_due and latest) or i == waiver_index:
+            lines.append(("late_fee", "Late payment fee (previous bill unpaid after due date)", LATE_FEE))
         amount = sum((ln[2] for ln in lines), Decimal("0"))
         if account["status"] == "closed":
             status = "paid"
-        elif unpaid_past_due:
-            status = "past_due" if due < TODAY or not latest else "open"
-            if latest:
-                status = "past_due"
+        elif unpaid:
+            status = "past_due" if due < TODAY else "open"
         elif latest and prof.disputed:
             status = "disputed"
         elif latest and due >= TODAY and not account["autopay"]:
             status = "open"
         else:
             status = "paid"
-        out["bills"].append(
-            {
-                "id": bid,
-                "account_id": aid,
-                "period_start": start,
-                "period_end": end,
-                "issued_on": issued,
-                "due_on": due,
-                "kwh": kwh,
-                "amount": amount,
-                "estimated": estimated,
-                "status": status,
-            }
-        )
+        bill = {
+            "id": bid,
+            "account_id": aid,
+            "period_start": start,
+            "period_end": end,
+            "issued_on": issued,
+            "due_on": due,
+            "kwh": kwh,
+            "amount": amount,
+            "estimated": estimated,
+            "status": status,
+        }
+        bills.append(bill)
+        out["bills"].append(bill)
         for kind, desc, amt in lines:
             out["bill_line_items"].append({"bill_id": bid, "kind": kind, "description": desc, "amount": amt})
+        if i == waiver_index:
+            out["credits"].append(
+                {
+                    "id": f"CR-{aid}-W",
+                    "account_id": aid,
+                    "amount": LATE_FEE,
+                    "reason_code": "late_fee_waiver",
+                    "note": f"Courtesy waiver of late fee on {bid}",
+                    "applied_on": issued + timedelta(days=3),
+                    "approval_request_id": None,
+                }
+            )
         if status == "paid":
-            paid_on = min(due - timedelta(days=rng.randint(0, 15)), TODAY)
+            paid_on = min(due - timedelta(days=rng.randint(0, 15)), last_end)
+            paid_on = max(paid_on, issued)
             method = "autopay" if account["autopay"] else rng.choice(["card", "bank", "bank", "cash"])
             out["payments"].append(
                 {
@@ -275,28 +291,38 @@ def _bills_for_account(
                     "status": "posted",
                 }
             )
-        else:
-            balance += amount
 
-    if prof.returned_payment and out["payments"] and out["payments"][-1]["account_id"] == aid:
-        out["payments"][-1]["status"] = "returned"
+    # A returned payment reopens the bill it paid.
+    if prof.returned_payment and account["status"] != "closed":
+        paid = [b for b in bills if b["status"] == "paid"]
+        if paid:
+            b = paid[-1]
+            b["status"] = "past_due" if b["due_on"] < TODAY else "open"
+            for pm in reversed(out["payments"]):
+                if pm["id"] == f"PM-{aid}-{b['period_end']:%y%m}":
+                    pm["status"] = "returned"
+                    break
+
+    balance = sum((b["amount"] for b in bills if b["status"] != "paid"), Decimal("0"))
 
     if prof.plan_defaulted:
         created = TODAY - timedelta(days=rng.randint(120, 330))
+        total = money(rng.uniform(150, 600))
         out["payment_plans"].append(
             {
                 "id": f"PP-{aid}-D",
                 "account_id": aid,
-                "total_amount": money(rng.uniform(150, 600)),
+                "total_amount": total,
                 "installments": 6,
-                "installment_amount": money(rng.uniform(25, 100)),
+                "installment_amount": installment(total, 6),
                 "start_on": created,
                 "status": "defaulted",
                 "created_on": created,
                 "defaulted_on": created + timedelta(days=rng.randint(40, 90)),
             }
         )
-    if prof.plan_active and balance > 0:
+    plan_active = prof.plan_active and balance > 0
+    if plan_active:
         created = TODAY - timedelta(days=rng.randint(10, 60))
         out["payment_plans"].append(
             {
@@ -304,26 +330,16 @@ def _bills_for_account(
                 "account_id": aid,
                 "total_amount": balance,
                 "installments": 4,
-                "installment_amount": money(balance / 4),
+                "installment_amount": installment(balance, 4),
                 "start_on": created,
                 "status": "active",
                 "created_on": created,
                 "defaulted_on": None,
             }
         )
-    if prof.recent_waiver:
-        out["credits"].append(
-            {
-                "id": f"CR-{aid}-W",
-                "account_id": aid,
-                "amount": LATE_FEE,
-                "reason_code": "late_fee_waiver",
-                "note": "Courtesy waiver",
-                "applied_on": TODAY - timedelta(days=rng.randint(20, 340)),
-                "approval_request_id": None,
-            }
-        )
-    if prof.disconnect_scheduled:
+    if prof.disconnect_scheduled and plan_active:
+        account["status"] = "active"  # an active plan cancels a scheduled disconnect (P-16)
+    elif prof.disconnect_scheduled:
         out["service_orders"].append(
             {
                 "id": f"SO-{aid}-X",
@@ -348,7 +364,11 @@ def _bills_for_account(
             }
         )
     account["balance"] = balance
-    _ = medical
+
+
+def installment(total: Decimal, n: int) -> Decimal:
+    """Monthly installment, rounded up to the cent; the last installment absorbs the remainder."""
+    return (total / n).quantize(Decimal("0.01"), rounding=ROUND_CEILING)
 
 
 def _prev_month(d: date, day: int) -> date:
@@ -405,8 +425,16 @@ TABLE_ORDER = [
 ]
 
 
-def load(engine: Engine, data: dict[str, list[Row]]) -> dict[str, int]:
-    """Replace all rows with `data`. Only for the local dev and eval database."""
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "postgres"}
+
+
+def load(engine: Engine, data: dict[str, list[Row]], force: bool = False) -> dict[str, int]:
+    """Replace all rows with `data`. Refuses non-local databases unless `force` is set."""
+    host = engine.url.host or "localhost"
+    if host not in LOCAL_HOSTS and not force:
+        raise RuntimeError(
+            f"Refusing to reseed non-local database host {host!r}; pass force=True to override."
+        )
     names = ", ".join(t.__tablename__ for t in TABLE_ORDER)
     counts: dict[str, int] = {}
     with engine.begin() as conn:
