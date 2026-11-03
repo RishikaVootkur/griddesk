@@ -1,4 +1,4 @@
-.PHONY: setup lint test dev seed eval eval-replay migrate up down web
+.PHONY: setup lint test
 
 setup:  ## Install Python and web dependencies and git hooks
 	uv sync
