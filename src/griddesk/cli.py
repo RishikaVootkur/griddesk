@@ -29,12 +29,15 @@ app.add_typer(db_app, name="db")
 
 
 @db_app.command("seed")
-def db_seed(seed: int = typer.Option(20261015, help="Random seed for the generator.")) -> None:
+def db_seed(
+    seed: int = typer.Option(20261015, help="Random seed for the generator."),
+    force: bool = typer.Option(False, "--force", help="Allow reseeding a non-local database host."),
+) -> None:
     """Replace the local database contents with freshly generated synthetic data."""
     from griddesk.db.seed import generate, load
     from griddesk.db.session import get_engine
 
-    counts = load(get_engine(), generate(seed))
+    counts = load(get_engine(), generate(seed), force=force)
     for table, n in counts.items():
         if n:
             typer.echo(f"{table:22s} {n:>7,}")

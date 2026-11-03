@@ -16,19 +16,29 @@ def engine():
     """A migrated, seeded Postgres. Skips the test when no database is reachable."""
     from alembic import command
     from alembic.config import Config
-    from sqlalchemy import text
+    from sqlalchemy import create_engine, make_url, text
 
-    from griddesk.config import REPO_ROOT
+    from griddesk.config import REPO_ROOT, get_settings
     from griddesk.db.seed import generate, load
     from griddesk.db.session import get_engine
 
-    eng = get_engine()
+    # Tests use their own database next to the dev one, so running pytest never wipes dev data.
+    dev_url = make_url(get_settings().database_url.get_secret_value())
+    test_url = dev_url.set(database=f"{dev_url.database}_test")
     try:
-        with eng.connect() as c:
-            c.execute(text("select 1"))
+        admin = create_engine(dev_url, isolation_level="AUTOCOMMIT")
+        with admin.connect() as c:
+            exists = c.execute(text("select 1 from pg_database where datname = :n"), {"n": test_url.database})
+            if not exists.scalar():
+                c.execute(text(f'create database "{test_url.database}"'))
+        admin.dispose()
     except Exception:
         pytest.skip("Postgres not reachable; start it with `docker compose up -d postgres`")
-    command.upgrade(Config(str(REPO_ROOT / "alembic.ini")), "head")
+    url = test_url.render_as_string(hide_password=False)
+    cfg = Config(str(REPO_ROOT / "alembic.ini"))
+    cfg.attributes["url"] = url
+    command.upgrade(cfg, "head")
+    eng = get_engine(url)
     load(eng, generate())
     return eng
 
