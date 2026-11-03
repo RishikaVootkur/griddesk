@@ -17,16 +17,25 @@ from griddesk.config import get_settings
 
 
 class Clock:
-    """Simulated utility time. Live clocks advance in real time from the simulated start."""
+    """Simulated utility time.
 
-    def __init__(self, start: datetime | None = None, frozen: bool = False) -> None:
+    Live clocks advance in real time from the simulated start. Deterministic clocks (eval trials)
+    advance one fixed tick per call, so rows written in a trial get distinct, ordered timestamps
+    that are identical on every replay.
+    """
+
+    TICK = timedelta(seconds=1)
+
+    def __init__(self, start: datetime | None = None, deterministic: bool = False) -> None:
         self._start = start or get_settings().simulated_now
-        self._frozen = frozen
+        self._deterministic = deterministic
+        self._ticks = 0
         self._t0 = monotonic()
 
     def now(self) -> datetime:
-        if self._frozen:
-            return self._start
+        if self._deterministic:
+            self._ticks += 1
+            return self._start + self._ticks * self.TICK
         return self._start + timedelta(seconds=monotonic() - self._t0)
 
     def today(self) -> date:
