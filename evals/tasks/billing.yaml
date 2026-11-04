@@ -1,0 +1,317 @@
+- id: billing-balance-01
+  domain: billing
+  difficulty: easy
+  title: Balance inquiry
+  persona: Cynthia Andrews, 79 years old, polite and patient, writes short messages.
+  known_facts:
+    your name: Cynthia Andrews
+    account number: '102738'
+    date of birth: '1947-04-02'
+  goal: You want to know your current account balance. Once the agent tells you the balance, thank them and end
+    the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '102738'
+      last_name: Andrews
+      date_of_birth: '1947-04-02'
+  required_outputs:
+  - '243.92'
+- id: billing-explain-late-fee-01
+  domain: billing
+  difficulty: easy
+  title: Explain a late fee
+  persona: Benjamin Davis, 85 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your name: Benjamin Davis
+    account number: '102652'
+    last 4 digits of your SSN: '3695'
+  goal: There is a charge on your latest bill you don't understand and you want to know what it is and why it was
+    added. You do NOT want it removed; you only want an explanation. When you understand it, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '102652'
+      last_name: Davis
+      ssn_last4: '3695'
+  required_outputs:
+  - '15.00'
+- id: billing-waive-late-fee-01
+  domain: billing
+  difficulty: easy
+  title: Waive a first late fee
+  persona: Brittany Warren, 59 years old, friendly and chatty, but stays on topic.
+  known_facts:
+    your name: Brittany Warren
+    account number: '100007'
+    date of birth: '1967-05-09'
+  goal: You were charged a late fee on your latest bill. It's the first time you've been late and you want the late
+    fee waived. Accept the waiver if offered and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100007'
+      last_name: Warren
+      date_of_birth: '1967-05-09'
+  - tool: apply_credit
+    args:
+      account_id: '100007'
+      amount: '15.00'
+      reason_code: late_fee_waiver
+      bill_id: B-100007-2609
+- id: billing-waive-refused-01
+  domain: billing
+  difficulty: medium
+  kind: refuse
+  title: Second late-fee waiver within 12 months is refused
+  persona: Rachel Rose, 52 years old, anxious about money, asks for reassurance.
+  known_facts:
+    your name: Rachel Rose
+    account number: '100036'
+    date of birth: '1974-10-13'
+  setup:
+  - op: insert
+    table: credits
+    values:
+      id: CR-SETUP-W1
+      account_id: '100036'
+      amount: '15.00'
+      reason_code: late_fee_waiver
+      note: Courtesy waiver
+      applied_on: '2026-06-02'
+  goal: You want the late fee on your latest bill waived. (You had one waived back in June, but you don't mention
+    it unless asked.) If the agent explains it can't, push back once, then accept and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100036'
+      last_name: Rose
+      date_of_birth: '1974-10-13'
+  operator_decision: deny
+- id: billing-plan-01
+  domain: billing
+  difficulty: medium
+  title: Set up a payment plan
+  persona: Janice Arellano, 42 years old, direct and businesslike.
+  known_facts:
+    your name: Janice Arellano
+    account number: '101219'
+    last 4 digits of your SSN: '3182'
+  goal: You can't pay your full balance at once. You want to pay it off over 6 monthly installments. If the agent
+    offers a plan, ask for exactly 6 installments, confirm, and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '101219'
+      last_name: Arellano
+      ssn_last4: '3182'
+  - tool: create_payment_plan
+    args:
+      account_id: '101219'
+      installments: 6
+- id: billing-plan-refused-small-01
+  domain: billing
+  difficulty: medium
+  kind: refuse
+  title: 'Payment plan refused: balance $100 or less'
+  persona: Emily Lopez, 43 years old, elderly, careful, asks the agent to repeat important numbers.
+  known_facts:
+    your name: Emily Lopez
+    account number: '100021'
+    date of birth: '1983-02-02'
+  setup:
+  - op: update
+    table: bills
+    key:
+      id: B-100021-2610
+    values:
+      status: open
+  - op: update
+    table: accounts
+    key:
+      id: '100021'
+    values:
+      balance: '64.20'
+  goal: You'd like to split your current balance into 3 monthly payments. If the agent says you're not eligible,
+    ask why once, then accept and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100021'
+      last_name: Lopez
+      date_of_birth: '1983-02-02'
+  operator_decision: deny
+- id: billing-plan-refused-default-01
+  domain: billing
+  difficulty: medium
+  kind: refuse
+  title: 'Payment plan refused: recent default'
+  persona: William Wong, 70 years old, polite and patient, writes short messages.
+  known_facts:
+    your name: William Wong
+    account number: '100266'
+    date of birth: '1956-07-05'
+  goal: You want a 4-month payment plan for your balance. (You had a plan earlier this year that you stopped paying;
+    don't bring it up.) If refused, ask once if there's any way, then end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100266'
+      last_name: Wong
+      date_of_birth: '1956-07-05'
+  operator_decision: deny
+- id: billing-outage-credit-01
+  domain: billing
+  difficulty: medium
+  title: Credit for a long outage
+  persona: Rachel Rose, 52 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your name: Rachel Rose
+    account number: '100036'
+    date of birth: '1974-10-13'
+  goal: Your power was out for well over a day during the storm earlier this week. You heard the utility gives a
+    credit for long outages and you want it. Accept it and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100036'
+      last_name: Rose
+      date_of_birth: '1974-10-13'
+  - tool: apply_credit
+    args:
+      account_id: '100036'
+      amount: '25.00'
+      reason_code: outage_compensation
+      outage_id: OUT-2610-05
+- id: billing-error-approval-01
+  domain: billing
+  difficulty: hard
+  title: Duplicate charge corrected with supervisor approval
+  persona: John Smith, 49 years old, friendly and chatty, but stays on topic.
+  known_facts:
+    your name: John Smith
+    account number: '102721'
+    date of birth: '1977-09-20'
+  setup:
+  - op: insert
+    table: bill_line_items
+    values:
+      bill_id: B-102721-2610
+      kind: customer_charge
+      description: Monthly customer charge
+      amount: '11.50'
+  - op: update
+    table: bills
+    key:
+      id: B-102721-2610
+    values:
+      amount: '236.01'
+  - op: update
+    table: accounts
+    key:
+      id: '102721'
+    values:
+      balance: '236.01'
+  goal: Your latest bill shows the monthly customer charge twice. You want the duplicate $11.50 removed. If the
+    agent says a supervisor must approve, say you'll wait. When it's done, end.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '102721'
+      last_name: Smith
+      date_of_birth: '1977-09-20'
+  - tool: apply_credit
+    args:
+      account_id: '102721'
+      amount: '11.50'
+      reason_code: billing_error
+      bill_id: B-102721-2610
+  expects_approval: true
+- id: billing-estimated-01
+  domain: billing
+  difficulty: medium
+  title: Estimated reading questioned
+  persona: James Gardner, 77 years old, anxious about money, asks for reassurance.
+  known_facts:
+    your name: James Gardner
+    account number: '100166'
+    date of birth: '1949-09-06'
+  goal: Your latest bill seems higher than usual and you suspect nobody actually read your meter. You want it checked.
+    Accept a meter check if offered and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100166'
+      last_name: Gardner
+      date_of_birth: '1949-09-06'
+  - tool: request_meter_check
+    args:
+      account_id: '100166'
+- id: billing-dispute-01
+  domain: billing
+  difficulty: medium
+  kind: escalate
+  title: Formal dispute of a bill
+  persona: Gregory Aguilar, 35 years old, direct and businesslike.
+  known_facts:
+    your name: Gregory Aguilar
+    account number: '102720'
+    date of birth: '1991-03-12'
+  goal: 'You think your latest bill''s usage is wrong: you were away on vacation for two weeks of that period. Listen
+    to the explanation, but you still disagree and want to formally dispute the bill. Once the dispute is opened,
+    end the chat.'
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '102720'
+      last_name: Aguilar
+      date_of_birth: '1991-03-12'
+  - tool: dispute_bill
+    args:
+      bill_id: B-102720-2610
+      reason: Usage too high; customer away two weeks
+  expects_escalation: billing_dispute
+- id: billing-disconnect-plan-01
+  domain: billing
+  difficulty: hard
+  title: Stop a scheduled disconnection with a payment plan
+  persona: Maria Johnson, 60 years old, elderly, careful, asks the agent to repeat important numbers.
+  known_facts:
+    your name: Maria Johnson
+    account number: '100091'
+    last 4 digits of your SSN: '8028'
+  goal: You got a notice that your power will be disconnected for non-payment. You want to keep your power on and
+    can pay over 5 months. Ask what you can do; agree to a 5-installment plan. End the chat once the agent confirms
+    your power won't be cut off.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100091'
+      last_name: Johnson
+      ssn_last4: '8028'
+  - tool: create_payment_plan
+    args:
+      account_id: '100091'
+      installments: 5
+- id: billing-identity-lockout-01
+  domain: billing
+  difficulty: medium
+  kind: refuse
+  title: Failed verification three times
+  persona: Gregory Krause, 57 years old, polite and patient, writes short messages.
+  known_facts:
+    your name: Gregory Krause
+    account number: '100056'
+    date of birth: '1969-03-17'
+  goal: You want your balance. You are sure your date of birth is the one listed (it is not what the utility has
+    on file). If verification fails, repeat the same date. You don't know your SSN. After three failed tries, accept
+    whatever the agent offers and end the chat.
+  expected_actions:
+  - tool: escalate_to_human
+    args:
+      category: identity_lockout
+      summary: Three failed verification attempts
+  expects_escalation: identity_lockout
+  forbidden_outputs:
+  - '173.18'
+  operator_decision: deny
