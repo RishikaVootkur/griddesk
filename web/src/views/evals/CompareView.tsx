@@ -5,6 +5,7 @@ import { Card, Empty, ErrorNote, Spinner } from "../../components/ui";
 import { breakdown, deltaDirection, formatDelta, METRICS } from "../../lib/metrics";
 import { useAsync } from "../../lib/useAsync";
 import { CompareBars, SERIES_A, SERIES_B } from "./charts";
+import { SampleDataNote } from "./SampleDataNote";
 
 function RunPicker({ id, label, color, runs, value, onChange }: { id: string; label: string; color: string; runs: EvalRunSummary[]; value: string; onChange: (v: string) => void }) {
   return (
@@ -109,6 +110,8 @@ export function CompareView() {
         <h1 className="mt-1 text-xl font-semibold text-slate-900">Compare runs</h1>
         <p className="text-sm text-slate-500">Pick a baseline (A) and a candidate (B).</p>
       </div>
+
+      <SampleDataNote />
 
       {runs.error && <Card><ErrorNote message={runs.error} onRetry={runs.reload} /></Card>}
       {!runs.data && runs.loading && <Card><Spinner label="Loading runs" /></Card>}

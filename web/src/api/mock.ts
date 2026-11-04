@@ -252,6 +252,7 @@ export function mockApi(loadEvalData: () => Promise<StaticEvalData>): Api {
       return db.audit.filter((e) => !outcome || e.outcome === outcome).slice(0, limit);
     },
 
+    evalDataSource: async () => "sample",
     listRuns: async () => (await loadEvalData()).runs,
     async getRun(name) {
       const run = (await loadEvalData()).details[name];

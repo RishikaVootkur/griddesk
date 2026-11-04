@@ -38,7 +38,11 @@ export interface Api {
   listAudit(outcome?: string, limit?: number): Promise<AuditEntry[]>;
   listRuns(): Promise<EvalRunSummary[]>;
   getRun(name: string): Promise<EvalRunDetail>;
+  /** "sample" when eval data is the bundled sample, not real results. */
+  evalDataSource(): Promise<EvalDataSource>;
 }
+
+export type EvalDataSource = "live" | "sample";
 
 async function errorMessage(res: Response): Promise<string> {
   try {
@@ -87,18 +91,24 @@ function parseStreamEvent(event: string, data: string): StreamEvent | null {
   }
 }
 
-let staticData: Promise<StaticEvalData> | null = null;
+let staticData: Promise<{ data: StaticEvalData; source: EvalDataSource }> | null = null;
 
-/** Static build: ./eval-data.json, falling back to the bundled sample for previews. */
-function loadStaticData(): Promise<StaticEvalData> {
+/**
+ * Static build: ./eval-data.json, falling back to the sample for previews.
+ * The fallback is reported through `evalDataSource()` so the UI can label it.
+ */
+function loadStaticData() {
   staticData ??= (async () => {
-    for (const file of ["eval-data.json", "eval-data.sample.json"]) {
+    for (const [file, source] of [
+      ["eval-data.json", "live"],
+      ["eval-data.sample.json", "sample"],
+    ] as const) {
       try {
         // BASE_URL is "./" in the static build (hash routing keeps the page at index.html) and "/" otherwise.
         const res = await fetch(`${import.meta.env.BASE_URL}${file}`);
         if (!res.ok) continue;
         const data = (await res.json()) as StaticEvalData;
-        if (Array.isArray(data.runs)) return data;
+        if (Array.isArray(data.runs)) return { data, source };
       } catch {
         // missing or not JSON (some hosts answer 404s with HTML): try the next file
       }
@@ -153,6 +163,7 @@ const httpApi: Api = {
   },
   listRuns: () => request("/eval/runs"),
   getRun: (name) => request(`/eval/runs/${encodeURIComponent(name)}`),
+  evalDataSource: async () => "live",
 };
 
 const staticApi: Api = {
@@ -166,12 +177,13 @@ const staticApi: Api = {
   listApprovals: staticUnavailable,
   decide: staticUnavailable,
   listAudit: staticUnavailable,
-  listRuns: async () => (await loadStaticData()).runs,
+  listRuns: async () => (await loadStaticData()).data.runs,
   async getRun(name) {
-    const run = (await loadStaticData()).details[name];
+    const run = (await loadStaticData()).data.details[name];
     if (!run) throw new ApiError(404, `Run "${name}" is not in eval-data.json.`);
     return run;
   },
+  evalDataSource: async () => (await loadStaticData()).source,
 };
 
 /** Mock mode only: the sample is bundled as its own chunk, never part of the normal build. */

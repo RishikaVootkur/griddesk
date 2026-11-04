@@ -4,6 +4,7 @@ import { Card, Empty, ErrorNote, Pill, Spinner } from "../../components/ui";
 import { dateTime, pct } from "../../lib/format";
 import { useAsync } from "../../lib/useAsync";
 import { RunDetail } from "./RunDetail";
+import { SampleDataNote } from "./SampleDataNote";
 
 export function EvalsView() {
   const [params, setParams] = useSearchParams();
@@ -23,6 +24,8 @@ export function EvalsView() {
           </Link>
         )}
       </div>
+
+      <SampleDataNote />
 
       <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
         <Card title="Runs" className="self-start">
