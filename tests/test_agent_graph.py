@@ -287,3 +287,53 @@ async def test_identity_answers_are_masked_in_call_logs(sessions):
     await runner.send("conv-l", "hi")
     assert tb.calls[0].arguments["date_of_birth"] == "<redacted>"
     await tb.close()
+
+
+async def multi_runner(ctx, replies):
+    tb = await Toolbox.open({"billing": build_billing_server(ctx), "accounts": build_accounts_server(ctx)})
+    fake = Scripted(replies)
+    runner = ConversationRunner(
+        tb, Gateway(providers={"fake": fake}), AgentConfig(model="fake:m", today=TODAY), design="multi"
+    )
+    return runner, tb, fake
+
+
+async def test_triage_hands_off_and_verification_carries_over(sessions):
+    ctx = make_ctx(sessions)
+    acct = one(ctx, WAIVABLE)
+    cust = one(ctx, "select last_name, ssn_last4 from customers where id = :c", c=acct.customer_id)
+    runner, tb, fake = await multi_runner(
+        ctx,
+        [
+            use("transfer_to_billing", 1, reason="late fee question"),
+            use("verify_identity", 2, account_id=acct.id, last_name=cust.last_name, ssn_last4=cust.ssn_last4),
+            use("transfer_to_account", 3, reason="also wants paperless"),
+            use("set_paperless", 4, account_id=acct.id, enabled=True),
+            say("Paperless is on."),
+        ],
+    )
+    res = await runner.send("conv-m1", "Question about my late fee, and I want paperless.")
+    assert res.reply == "Paperless is on." and res.agents[-1] == "account"
+    assert [h["to"] for h in tb.handoffs] == ["billing", "account"]
+    assert tb.calls[-1].tool == "set_paperless" and tb.calls[-1].ok  # verified under billing, used by account
+    # Each specialist only sees its own tools.
+    triage_tools = {t.name for t in fake.requests[0].tools}
+    billing_tools = {t.name for t in fake.requests[1].tools}
+    assert "apply_credit" not in triage_tools and "transfer_to_billing" in triage_tools
+    assert "stop_service" not in billing_tools and "apply_credit" in billing_tools
+    await tb.close()
+
+
+async def test_specialist_cannot_call_another_specialists_tool(sessions):
+    ctx = make_ctx(sessions)
+    runner, tb, _ = await multi_runner(
+        ctx,
+        [
+            use("transfer_to_billing", 1, reason="bill"),
+            use("stop_service", 2, account_id="1", stop_date="2026-10-20"),
+            say("I can't do that here."),
+        ],
+    )
+    await runner.send("conv-m2", "stop my service")
+    assert tb.calls[-1].tool == "stop_service" and tb.calls[-1].known_tool is False
+    await tb.close()

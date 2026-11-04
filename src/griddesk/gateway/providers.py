@@ -54,10 +54,12 @@ async def _post(client: httpx.AsyncClient, url: str, body: dict[str, Any], heade
             m = re.search(r'"retryDelay":\s*"([\d.]+s)"', r.text)
             retry_after = _parse_retry_after(m.group(1)) if m else None
         tool_use_failed = "tool_use_failed" in detail
+        # A spent daily quota will not recover within any sensible backoff: fail fast and fall back.
+        daily_quota = r.status_code == 429 and ("PerDay" in r.text or "per day" in r.text.lower())
         raise ProviderError(
             f"HTTP {r.status_code}: {detail}",
             status=r.status_code,
-            retryable=r.status_code in RETRYABLE_STATUS or tool_use_failed,
+            retryable=(r.status_code in RETRYABLE_STATUS or tool_use_failed) and not daily_quota,
             retry_after=retry_after,
             # A malformed tool call usually repeats at temperature 0: one more try, then fall back.
             retry_limit=1 if tool_use_failed else None,
