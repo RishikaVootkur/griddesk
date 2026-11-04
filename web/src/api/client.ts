@@ -133,6 +133,8 @@ const httpApi: Api = {
       yield ev;
       if (ev.type === "done") return;
     }
+    // A stream that closes without `done` means the backend or a proxy dropped the reply.
+    throw new ApiError(0, "The connection closed before the reply finished.");
   },
 
   listConversations: () => request("/conversations"),
