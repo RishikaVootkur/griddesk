@@ -1,6 +1,6 @@
 # CI regression gate: a fixed slice replayed from the committed response cache (evals/cache).
 # Re-record with `make eval-record` after changing prompts, tools or tasks in the slice.
-model: gemini:gemini-3.5-flash-lite
+model: ollama:qwen3:8b
 suite: tasks
 trials: 1
 baseline: evals/baselines/ci-gate.json
