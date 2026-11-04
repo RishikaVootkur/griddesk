@@ -12,6 +12,7 @@ The tool then performs the action anyway, but the audit log still records which 
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
@@ -169,22 +170,25 @@ def enforce(
 
 
 def require_account(
-    s: Session, ctx: ToolContext, conversation_id: str, account_id: str, action: str
+    s: Session, ctx: ToolContext, conversation_id: str, account_id: str, action: str, for_update: bool = False
 ) -> m.Account:
-    """Load an account and check the caller may act on it (P-01, P-02)."""
-    acct = s.get(m.Account, account_id.strip())
+    """Load an account and check the caller may act on it (P-01, P-02).
+
+    A missing account gets the same refusal as someone else's account, so the tool never confirms
+    whether an account number exists (P-05). Write tools pass `for_update=True` to lock the row,
+    which serializes concurrent writes so read-then-insert limits (P-08, P-10, P-12, P-15, P-22) hold.
+    """
+    stmt = select(m.Account).where(m.Account.id == account_id.strip())
+    if for_update:
+        stmt = stmt.with_for_update()
+    acct = s.scalars(stmt).first()
+    verified = verified_customer_id(s, conversation_id)
     if acct is None:
-        # Same wording whether or not the account exists, so the tool is not an account oracle.
-        if verified_customer_id(s, conversation_id) is None and ctx.enforce_policy:
-            raise PolicyStop(
-                ToolError(
-                    code="policy_denied",
-                    rule_id="P-01",
-                    message="Identity not verified in this conversation.",
-                )
-            )
-        raise PolicyStop(ToolError(code="not_found", message=f"No account {account_id}."))
-    decision = check_account_access(verified_customer_id(s, conversation_id), acct.customer_id)
+        if not ctx.enforce_policy:
+            raise PolicyStop(ToolError(code="not_found", message=f"No account {account_id}."))
+        decision = check_account_access(verified, "<no such account>")
+        raise PolicyStop(ToolError(code="policy_denied", rule_id=decision.rule_id, message=decision.message))
+    decision = check_account_access(verified, acct.customer_id)
     enforce(
         s,
         ctx,
@@ -195,6 +199,31 @@ def require_account(
         arguments={"account_id": account_id},
     )
     return acct
+
+
+def lock_approval(
+    s: Session,
+    approval_id: str,
+    *,
+    action: str,
+    conversation_id: str,
+    account_id: str,
+    args: Mapping[str, object],
+) -> m.ApprovalRequest | None:
+    """Lock and return an approval that is approved for exactly this conversation, account, action and
+    arguments; otherwise None. The caller marks it `executed` in the same transaction as the action,
+    so the two commit together and the approval can never run twice.
+    """
+    req = s.scalars(
+        select(m.ApprovalRequest).where(m.ApprovalRequest.id == approval_id).with_for_update()
+    ).first()
+    if req is None or req.status != "approved" or req.action != action:
+        return None
+    if req.conversation_id != conversation_id or req.account_id != account_id:
+        return None
+    if any(str(req.arguments.get(k)) != str(v) for k, v in args.items()):
+        return None
+    return req
 
 
 def _jsonable(v: Any) -> Any:

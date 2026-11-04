@@ -11,8 +11,8 @@ from griddesk.mcp_servers.common import INTERNAL, ConversationId
 from griddesk.tools import approvals, billing
 from griddesk.tools.common import ToolContext, run_tool
 
-AccountId = Annotated[str, Field(description="The customer's account number, e.g. 1000123456.")]
-BillId = Annotated[str, Field(description="Bill id, e.g. B-1000123456-2609.")]
+AccountId = Annotated[str, Field(description="The customer's account number, e.g. 100482.")]
+BillId = Annotated[str, Field(description="Bill id, e.g. B-100482-2609.")]
 ReasonCode = Literal["late_fee_waiver", "outage_compensation", "billing_error", "goodwill"]
 
 

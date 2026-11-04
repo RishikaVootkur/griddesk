@@ -108,15 +108,14 @@ def execute(ctx: ToolContext, approval_request_id: str) -> ExecutionOut:
         return ExecutionOut(
             ok=False, error=ToolError(code="invalid_request", message=f"No executor for {action}.")
         )
+    # The tool locks the request, re-checks it, and marks it executed together with the action.
     result = fn(ctx, conv, approval_request_id=approval_request_id, **args)
     with ctx.sessions() as s:
         r = s.get(m.ApprovalRequest, approval_request_id)
         assert r is not None
-        if result.ok:
-            r.status = "executed"
-        s.commit()
+        ok = result.ok and r.status == "executed"
         return ExecutionOut(
-            ok=result.ok,
+            ok=ok,
             error=result.error,
             approval_request_id=r.id,
             status=r.status,
