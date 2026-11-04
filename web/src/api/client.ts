@@ -122,7 +122,7 @@ const staticUnavailable = (): never => {
   throw new ApiError(501, "This view needs the GridDesk backend. Run the app locally.");
 };
 
-const httpApi: Api = {
+export const httpApi: Api = {
   async createConversation(signal) {
     const r = await request<{ conversation_id: string }>("/conversations", { method: "POST", body: "{}", signal });
     return r.conversation_id;
