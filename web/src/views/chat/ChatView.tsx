@@ -55,7 +55,9 @@ export function ChatView() {
     try {
       let id = conversationId;
       if (!id) {
-        id = await api.createConversation();
+        id = await api.createConversation(controller.signal);
+        // "New conversation" may have been clicked while this was in flight.
+        if (controller.signal.aborted) return;
         setConversationId(id);
       }
       for await (const ev of api.sendMessage(id, text, controller.signal)) {
@@ -66,12 +68,15 @@ export function ChatView() {
     } catch (e) {
       if (!(e instanceof DOMException && e.name === "AbortError")) setError(describeError(e));
     } finally {
-      setStreaming(false);
+      // A newer send may already own the stream state.
+      if (abortRef.current === controller) setStreaming(false);
     }
   }
 
   function reset() {
     abortRef.current?.abort();
+    abortRef.current = null;
+    setStreaming(false);
     setConversationId(null);
     setMessages([]);
     setPending(null);

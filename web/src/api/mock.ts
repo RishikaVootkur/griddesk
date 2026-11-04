@@ -160,8 +160,8 @@ export function mockApi(loadEvalData: () => Promise<StaticEvalData>): Api {
   };
 
   return {
-    async createConversation() {
-      await sleep(150);
+    async createConversation(signal) {
+      await sleep(150, signal);
       const id = nextId("conv");
       db.conversations.set(id, { id, messages: [], awaiting: null, updatedAt: new Date().toISOString(), accountId: "102738" });
       return id;

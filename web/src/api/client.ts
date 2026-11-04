@@ -29,7 +29,7 @@ export class ApiError extends Error {
 }
 
 export interface Api {
-  createConversation(): Promise<string>;
+  createConversation(signal?: AbortSignal): Promise<string>;
   sendMessage(conversationId: string, text: string, signal?: AbortSignal): AsyncGenerator<StreamEvent>;
   listConversations(): Promise<ConversationSummary[]>;
   getConversation(conversationId: string): Promise<ConversationDetail>;
@@ -113,8 +113,8 @@ const staticUnavailable = (): never => {
 };
 
 const httpApi: Api = {
-  async createConversation() {
-    const r = await request<{ conversation_id: string }>("/conversations", { method: "POST", body: "{}" });
+  async createConversation(signal) {
+    const r = await request<{ conversation_id: string }>("/conversations", { method: "POST", body: "{}", signal });
     return r.conversation_id;
   },
 
