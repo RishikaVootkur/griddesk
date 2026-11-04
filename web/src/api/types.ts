@@ -1,4 +1,4 @@
-// Types for the GridDesk FastAPI backend. Keep in sync with the API contract.
+// Types for the GridDesk FastAPI backend, as documented in docs/api-contract.md. Change both together.
 
 export type ConversationStatus = "active" | "awaiting_approval";
 
