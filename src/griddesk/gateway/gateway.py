@@ -15,11 +15,19 @@ import time
 from collections import deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from typing import get_args
 
 from griddesk.gateway.cache import DiskCache, request_key
 from griddesk.gateway.pricing import list_price_cost
 from griddesk.gateway.providers import Provider
-from griddesk.gateway.types import BudgetExceeded, CacheMiss, LLMRequest, LLMResponse, ProviderError
+from griddesk.gateway.types import (
+    BudgetExceeded,
+    CacheMiss,
+    CacheMode,
+    LLMRequest,
+    LLMResponse,
+    ProviderError,
+)
 
 DEFAULT_CHAIN = ["gemini:gemini-3.8-flash", "groq:qwen/qwen3.8-27b", "ollama:qwen3:8b"]
 
@@ -90,7 +98,7 @@ def estimate_tokens(req: LLMRequest) -> int:
 class Gateway:
     providers: dict[str, Provider]
     cache: DiskCache | None = None
-    cache_mode: str = "read_write"  # off | read_write | replay_only
+    cache_mode: CacheMode = "read_write"
     max_retries: int = 6
     backoff_base: float = 2.0
     backoff_cap: float = 60.0
@@ -105,6 +113,17 @@ class Gateway:
     )
     _used: dict[str, int] = field(default_factory=dict)
     _limiters: dict[str, _Limiter] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.cache_mode not in get_args(CacheMode):
+            raise ValueError(f"cache_mode must be one of {get_args(CacheMode)}, got {self.cache_mode!r}")
+
+    async def aclose(self) -> None:
+        """Close provider HTTP clients."""
+        for p in self.providers.values():
+            close = getattr(p, "aclose", None)
+            if close is not None:
+                await close()
 
     def tokens_used(self, conversation_id: str) -> int:
         return self._used.get(conversation_id, 0)
@@ -135,8 +154,10 @@ class Gateway:
             attempt_req = req if model == req.model else req.model_copy(update={"model": model})
             try:
                 resp = await self._complete_one(attempt_req, namespace)
-            except CacheMiss:
-                raise
+            except CacheMiss as e:
+                # In replay a fallback model may hold the recorded answer; keep walking the chain.
+                last_error = e
+                continue
             except ProviderError as e:
                 last_error = e
                 self._record(conversation_id, req.model, attempt_req, None, error=str(e)[:200])
@@ -151,27 +172,29 @@ class Gateway:
         raise last_error
 
     async def _complete_one(self, req: LLMRequest, namespace: str) -> LLMResponse:
-        key = request_key(req, namespace)
+        provider = self.providers.get(req.provider)
+        key = request_key(req, namespace, getattr(provider, "fingerprint", ""))
         if self.cache and self.cache_mode != "off":
             hit = self.cache.get(key)
             if hit is not None:
                 return hit.model_copy(update={"cached": True})
             if self.cache_mode == "replay_only":
                 raise CacheMiss(f"no cached response for {req.model} (key {key[:12]})")
-        provider = self.providers.get(req.provider)
         if provider is None:
             raise ProviderError(f"provider {req.provider!r} is not configured")
         limiter = self._limiter(req.provider)
         attempt = 0
         while True:
             attempt += 1
-            await limiter.acquire(estimate_tokens(req))
-            t0 = self.clock()
             try:
+                # Concurrency slot first, then the rate slot, so the stamp matches the send time.
                 async with limiter.sem:
+                    await limiter.acquire(estimate_tokens(req))
+                    t0 = self.clock()
                     resp = await provider.complete(req)
             except ProviderError as e:
-                if not e.retryable or attempt > self.max_retries:
+                limit = self.max_retries if e.retry_limit is None else min(e.retry_limit, self.max_retries)
+                if not e.retryable or attempt > limit:
                     raise
                 delay = min(self.backoff_cap, self.backoff_base * 2 ** (attempt - 1)) * self.rng.uniform(
                     0.5, 1.0

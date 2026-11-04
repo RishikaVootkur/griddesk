@@ -7,6 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 Role = Literal["system", "user", "assistant", "tool"]
+CacheMode = Literal["off", "read_write", "replay_only"]
 
 
 class ToolCall(BaseModel):
@@ -86,11 +87,13 @@ class ProviderError(Exception):
         status: int | None = None,
         retryable: bool = False,
         retry_after: float | None = None,
+        retry_limit: int | None = None,
     ) -> None:
         super().__init__(message)
         self.status = status
         self.retryable = retryable
         self.retry_after = retry_after
+        self.retry_limit = retry_limit  # cap below the gateway's max_retries for this error
 
 
 class BudgetExceeded(Exception):

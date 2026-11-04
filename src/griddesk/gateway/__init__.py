@@ -13,6 +13,7 @@ from griddesk.gateway.providers import GeminiProvider, GroqProvider, OllamaProvi
 from griddesk.gateway.types import (
     BudgetExceeded,
     CacheMiss,
+    CacheMode,
     LLMRequest,
     LLMResponse,
     Message,
@@ -41,7 +42,7 @@ __all__ = [
 
 
 def build_gateway(
-    settings: Settings | None = None, cache_dir: Path | None = None, cache_mode: str | None = None
+    settings: Settings | None = None, cache_dir: Path | None = None, cache_mode: CacheMode | None = None
 ) -> Gateway:
     """Create a gateway with every provider whose credentials are configured."""
     s = settings or get_settings()
