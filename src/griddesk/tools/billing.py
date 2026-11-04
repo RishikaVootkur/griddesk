@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
@@ -12,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from griddesk.db import models as m
 from griddesk.db.seed import CUSTOMER_CHARGE, DELIVERY_RATE, ENERGY_RATE, TAX_RATE
+from griddesk.logging import redact_text
 from griddesk.policy import rules
 from griddesk.tools.common import (
     PolicyStop,
@@ -20,6 +20,7 @@ from griddesk.tools.common import (
     ToolOutput,
     audit,
     enforce,
+    lock_approval,
     money,
     require_account,
 )
@@ -143,18 +144,20 @@ def _active_plan(s: Session, account_id: str) -> m.PaymentPlan | None:
 
 def open_order_kinds(s: Session, account_id: str) -> tuple[str, ...]:
     rows = s.scalars(
-        select(m.ServiceOrder.kind).where(
-            m.ServiceOrder.account_id == account_id, m.ServiceOrder.status == "scheduled"
-        )
+        select(m.ServiceOrder.kind)
+        .where(m.ServiceOrder.account_id == account_id, m.ServiceOrder.status == "scheduled")
+        .order_by(m.ServiceOrder.requested_on, m.ServiceOrder.id)
     )
     return tuple(rows)
 
 
-def _load_bill(s: Session, ctx: ToolContext, conversation_id: str, bill_id: str, action: str) -> m.Bill:
+def _load_bill(
+    s: Session, ctx: ToolContext, conversation_id: str, bill_id: str, action: str, for_update: bool = False
+) -> m.Bill:
     bill = s.get(m.Bill, bill_id.strip())
-    if bill is None:
-        raise PolicyStop(ToolError(code="not_found", message=f"No bill {bill_id}."))
-    require_account(s, ctx, conversation_id, bill.account_id, action)
+    # An unknown bill id goes through the same account check, so ids cannot be probed (P-05).
+    require_account(s, ctx, conversation_id, bill.account_id if bill else "", action, for_update=for_update)
+    assert bill is not None
     return bill
 
 
@@ -179,9 +182,9 @@ def get_account_summary(ctx: ToolContext, conversation_id: str, account_id: str)
         addr = acct.service_address
         plan = _active_plan(s, acct.id)
         orders = s.scalars(
-            select(m.ServiceOrder).where(
-                m.ServiceOrder.account_id == acct.id, m.ServiceOrder.status == "scheduled"
-            )
+            select(m.ServiceOrder)
+            .where(m.ServiceOrder.account_id == acct.id, m.ServiceOrder.status == "scheduled")
+            .order_by(m.ServiceOrder.requested_on, m.ServiceOrder.id)
         )
         audit(s, ctx, conversation_id, "get_account_summary", "ok", acct.id)
         s.commit()
@@ -266,6 +269,9 @@ def apply_credit(
 ) -> CreditOut:
     """Apply a credit. `approval_request_id` is accepted only from the approval executor."""
     amt = parse_amount(amount)
+    bill_id = bill_id.strip() if bill_id else None
+    outage_id = outage_id.strip() if outage_id else None
+    note = redact_text(note)[:200]
     args = {
         "account_id": account_id,
         "amount": str(amt),
@@ -275,8 +281,16 @@ def apply_credit(
         "note": note,
     }
     with ctx.sessions() as s:
-        acct = require_account(s, ctx, conversation_id, account_id, "apply_credit")
+        acct = require_account(s, ctx, conversation_id, account_id, "apply_credit", for_update=True)
         today = ctx.today()
+        if reason_code in rules.REASONS_TIED_TO_BILL and not bill_id:
+            raise PolicyStop(
+                ToolError(
+                    code="policy_denied",
+                    rule_id="P-11",
+                    message=f"A {reason_code} credit must name the bill it applies to.",
+                )
+            )
         bill = s.get(m.Bill, bill_id) if bill_id else None
         if bill_id and (bill is None or bill.account_id != acct.id):
             raise PolicyStop(ToolError(code="not_found", message=f"No bill {bill_id} on this account."))
@@ -294,9 +308,19 @@ def apply_credit(
             )
         )
         qualifying, compensated = _outage_facts(s, acct, ctx)
-        approved = approval_request_id is not None and _approval_matches(
-            s, approval_request_id, "apply_credit", args
+        approval = (
+            lock_approval(
+                s,
+                approval_request_id,
+                action="apply_credit",
+                conversation_id=conversation_id,
+                account_id=acct.id,
+                args=args,
+            )
+            if approval_request_id
+            else None
         )
+        approved = approval is not None
         facts = rules.CreditFacts(
             amount=amt,
             reason_code=reason_code,
@@ -331,6 +355,8 @@ def apply_credit(
             approval_request_id=approval_request_id if approved else None,
         )
         acct.balance = acct.balance - amt
+        if approval is not None:
+            approval.status = "executed"
         s.add(credit)
         audit(
             s,
@@ -348,8 +374,15 @@ def apply_credit(
 def _outage_facts(s: Session, acct: m.Account, ctx: ToolContext) -> tuple[tuple[str, ...], tuple[str, ...]]:
     feeder = acct.service_address.feeder
     now = ctx.clock.now()
-    outages = s.scalars(select(m.Outage).where(m.Outage.feeder == feeder, m.Outage.status == "restored"))
-    qualifying = tuple(o.id for o in outages if rules.qualifying_outage(o.started_at, o.restored_at, now))
+    outages = s.scalars(
+        select(m.Outage).where(m.Outage.feeder == feeder, m.Outage.status == "restored").order_by(m.Outage.id)
+    )
+    # Only outages the account was open for (P-12 compensates this account's lost service).
+    qualifying = tuple(
+        o.id
+        for o in outages
+        if o.started_at.date() >= acct.opened_on and rules.qualifying_outage(o.started_at, o.restored_at, now)
+    )
     paid = set(
         s.scalars(
             select(m.Credit.outage_id).where(
@@ -361,19 +394,11 @@ def _outage_facts(s: Session, acct: m.Account, ctx: ToolContext) -> tuple[tuple[
     return qualifying, compensated
 
 
-def _approval_matches(s: Session, approval_id: str, action: str, args: Mapping[str, object]) -> bool:
-    """True only for an approved, unexecuted request for this exact action and these arguments."""
-    req = s.get(m.ApprovalRequest, approval_id)
-    if req is None or req.status != "approved" or req.action != action:
-        return False
-    return all(str(req.arguments.get(k)) == str(v) for k, v in args.items())
-
-
 def create_payment_plan(
     ctx: ToolContext, conversation_id: str, account_id: str, installments: int
 ) -> PlanResult:
     with ctx.sessions() as s:
-        acct = require_account(s, ctx, conversation_id, account_id, "create_payment_plan")
+        acct = require_account(s, ctx, conversation_id, account_id, "create_payment_plan", for_update=True)
         today = ctx.today()
         last_default = s.scalar(
             select(func.max(m.PaymentPlan.defaulted_on)).where(
@@ -435,7 +460,7 @@ def create_payment_plan(
 
 def dispute_bill(ctx: ToolContext, conversation_id: str, bill_id: str, reason: str) -> DisputeOut:
     with ctx.sessions() as s:
-        bill = _load_bill(s, ctx, conversation_id, bill_id, "dispute_bill")
+        bill = _load_bill(s, ctx, conversation_id, bill_id, "dispute_bill", for_update=True)
         enforce(
             s,
             ctx,
@@ -451,7 +476,7 @@ def dispute_bill(ctx: ToolContext, conversation_id: str, bill_id: str, reason: s
             conversation_id=conversation_id,
             account_id=bill.account_id,
             category="billing_dispute",
-            summary=f"Dispute of {bill.id}: {reason[:500]}",
+            summary=f"Dispute of {bill.id}: {redact_text(reason)[:500]}",
             created_at=ctx.clock.now(),
             status="open",
         )
@@ -463,7 +488,7 @@ def dispute_bill(ctx: ToolContext, conversation_id: str, bill_id: str, reason: s
 
 def request_meter_check(ctx: ToolContext, conversation_id: str, account_id: str) -> OrderOut:
     with ctx.sessions() as s:
-        acct = require_account(s, ctx, conversation_id, account_id, "request_meter_check")
+        acct = require_account(s, ctx, conversation_id, account_id, "request_meter_check", for_update=True)
         enforce(
             s,
             ctx,
