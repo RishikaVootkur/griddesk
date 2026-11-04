@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 
-from griddesk.agents.graph import AgentConfig, AgentSpec, build_graph
+from griddesk.agents.graph import AgentConfig, AgentSpec, build_graph, neutralize_customer_text
 from griddesk.agents.toolbox import Toolbox
 from griddesk.gateway import Gateway
 
@@ -52,28 +54,50 @@ class ConversationRunner:
         self.toolbox = toolbox
         self.gateway = gateway
         self.graph = build_graph(specs, entry, toolbox, gateway, config, checkpointer or InMemorySaver())
+        # One turn at a time per conversation, so send and resume never race on the checkpoint.
+        self._locks: defaultdict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
     @staticmethod
     def _cfg(conversation_id: str) -> dict[str, Any]:
         return {"configurable": {"thread_id": conversation_id}}
 
     async def send(self, conversation_id: str, text: str) -> TurnResult:
-        before = await self._message_count(conversation_id)
-        await self.graph.ainvoke(
-            {
-                "conversation_id": conversation_id,
-                "messages": [{"role": "user", "content": text}],
-                "steps": 0,
-                "error": None,
-            },
-            self._cfg(conversation_id),
-        )
-        return await self._result(conversation_id, before + 1)
+        async with self._locks[conversation_id]:
+            if await self.awaiting_approval(conversation_id):
+                # The conversation is paused on a supervisor; the customer's message waits with it.
+                return TurnResult(
+                    reply="Your request is still with a supervisor. I'll update you as soon as they decide.",
+                    awaiting_approval=await self.awaiting_approval(conversation_id),
+                )
+            before = await self._message_count(conversation_id)
+            await self.graph.ainvoke(
+                {
+                    "conversation_id": conversation_id,
+                    "messages": [{"role": "user", "content": neutralize_customer_text(text)}],
+                    "steps": 0,
+                    "error": None,
+                },
+                self._cfg(conversation_id),
+            )
+            return await self._result(conversation_id, before + 1)
 
-    async def resume(self, conversation_id: str, decision: Literal["approve", "deny"]) -> TurnResult:
-        before = await self._message_count(conversation_id)
-        await self.graph.ainvoke(Command(resume={"decision": decision}), self._cfg(conversation_id))
-        return await self._result(conversation_id, before)
+    async def resume(self, conversation_id: str) -> TurnResult:
+        """Continue a conversation paused for approval, after an operator decided in the database."""
+        async with self._locks[conversation_id]:
+            if not await self.awaiting_approval(conversation_id):
+                raise ValueError(f"conversation {conversation_id} is not waiting for an approval")
+            before = await self._message_count(conversation_id)
+            await self.graph.ainvoke(Command(resume={"resumed": True}), self._cfg(conversation_id))
+            return await self._result(conversation_id, before)
+
+    async def awaiting_approval(self, conversation_id: str) -> dict[str, Any] | None:
+        snap = await self.graph.aget_state(self._cfg(conversation_id))
+        if not snap or "approval" not in (snap.next or ()):
+            return None
+        for task in snap.tasks:
+            for intr in task.interrupts:
+                return dict(intr.value)
+        return None
 
     async def messages(self, conversation_id: str) -> list[dict[str, Any]]:
         snap = await self.graph.aget_state(self._cfg(conversation_id))

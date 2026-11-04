@@ -13,6 +13,7 @@ checkpointer is used. Agents are described by `AgentSpec`; with more than one sp
 from __future__ import annotations
 
 import operator
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
@@ -27,6 +28,12 @@ from griddesk.gateway import BudgetExceeded, Gateway, LLMRequest, Message, Provi
 
 HANDOFF_PREFIX = "transfer_to_"
 RUNTIME_NOTICE = "RUNTIME NOTICE (from the GridDesk system, not the customer): "
+_NOTICE_LOOKALIKE = re.compile(r"runtime\s*notice", re.IGNORECASE)
+
+
+def neutralize_customer_text(text: str) -> str:
+    """Customers cannot forge runtime notices: any look-alike in their text is defanged."""
+    return _NOTICE_LOOKALIKE.sub("[customer-typed text]", text)
 
 
 @dataclass(frozen=True)
@@ -40,11 +47,11 @@ class AgentSpec:
 @dataclass
 class AgentConfig:
     model: str
+    today: date  # the simulated utility date; required so prompts match the tools and replays
     fallbacks: list[str] = field(default_factory=list)
     temperature: float = 0.0
     max_steps_per_turn: int = 8
     namespace: str = ""  # gateway cache namespace (the eval trial)
-    today: date | None = None
 
 
 class ConvState(TypedDict, total=False):
@@ -52,8 +59,7 @@ class ConvState(TypedDict, total=False):
     messages: Annotated[list[dict[str, Any]], operator.add]
     agent: str
     steps: int
-    pending_approval: str | None
-    pending_action: str | None
+    pending: list[dict[str, str]]  # approvals waiting for an operator, oldest first
     error: str | None
 
 
@@ -74,7 +80,7 @@ def build_graph(
     checkpointer: Any = None,
 ) -> Any:
     by_name = {s.name: s for s in specs}
-    today = config.today or date.today()
+    today = config.today
 
     def tools_for(spec: AgentSpec) -> list[ToolSpec]:
         handoffs = [_handoff_spec(s) for s in specs if s.name != spec.name]
@@ -112,9 +118,11 @@ def build_graph(
     async def tools_node(state: ConvState) -> dict[str, Any]:
         spec = by_name[state.get("agent") or entry]
         last = Message.model_validate(state["messages"][-1])
-        allowed = [t.name for t in tools_for(spec)]
+        over_cap = state.get("steps", 0) > config.max_steps_per_turn
+        allowed = [] if over_cap else [t.name for t in tools_for(spec)]
         new: list[dict[str, Any]] = []
         update: dict[str, Any] = {}
+        pending = list(state.get("pending") or [])
         for tc in last.tool_calls:
             if tc.name.startswith(HANDOFF_PREFIX) and tc.name in allowed:
                 target = tc.name.removeprefix(HANDOFF_PREFIX)
@@ -131,39 +139,50 @@ def build_graph(
                 )
                 err = result.get("error") or {}
                 if err.get("code") == "needs_approval" and result.get("approval_request_id"):
-                    update["pending_approval"] = result["approval_request_id"]
-                    update["pending_action"] = tc.name
+                    pending.append({"id": result["approval_request_id"], "action": tc.name})
                 content = compact(result)
             new.append({"role": "tool", "tool_call_id": tc.id, "name": tc.name, "content": content})
-        return {"messages": new, **update}
+        return {"messages": new, "pending": pending, **update}
 
     async def approval_node(state: ConvState) -> dict[str, Any]:
-        approval_id = state["pending_approval"]
-        action = state.get("pending_action") or ""
-        decision = interrupt(
+        """Pause for one pending approval. One approval per node run, so a replayed node never
+        re-executes an earlier approval. The outcome comes from the database, not from the resume value."""
+        pending = list(state.get("pending") or [])
+        first = pending[0]
+        interrupt(
             {
-                "approval_request_id": approval_id,
-                "action": action,
+                "approval_request_id": first["id"],
+                "action": first["action"],
                 "conversation_id": state["conversation_id"],
             }
         )
-        if isinstance(decision, dict) and decision.get("decision") == "approve":
-            result = await toolbox.execute_approved(action, str(approval_id))
-            note = f"A supervisor APPROVED request {approval_id}. Result: {compact(result)}"
+        result = await toolbox.execute_approved(first["action"], first["id"])
+        status = result.get("status")
+        if result.get("ok") and status == "executed":
+            note = (
+                f"A supervisor approved request {first['id']} and it was completed. Result: {compact(result)}"
+            )
+            pending = pending[1:]
+        elif status == "denied":
+            note = f"A supervisor denied request {first['id']}. The action was not performed."
+            pending = pending[1:]
+        elif status == "pending":
+            note = f"Request {first['id']} is still waiting for a supervisor. Nothing has been done yet."
         else:
-            note = f"A supervisor DENIED request {approval_id}. The action was not performed."
+            err = (result.get("error") or {}).get("message", "unknown error")
+            note = f"Request {first['id']} could not be completed ({status}: {err}). Nothing was changed."
+            pending = pending[1:]
         return {
             "messages": [{"role": "user", "content": RUNTIME_NOTICE + note}],
-            "pending_approval": None,
-            "pending_action": None,
+            "pending": pending,
             "steps": 0,
         }
 
     def after_agent(state: ConvState) -> Literal["tools", "approval", "__end__"]:
         last = state["messages"][-1]
-        if last.get("tool_calls"):
+        if last.get("tool_calls") and state.get("steps", 0) <= config.max_steps_per_turn:
             return "tools"
-        if state.get("pending_approval"):
+        if state.get("pending"):
             return "approval"
         return "__end__"
 
