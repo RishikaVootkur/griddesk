@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "My date of birth is 1983-02-02.Great, thank you. Could you split my current balance into three equal monthly payments, please?",
+ "usage": {
+  "input_tokens": 568,
+  "output_tokens": 66
+ },
+ "latency_ms": 380.0,
+ "cost_usd": 0.00012480000000000002
+}

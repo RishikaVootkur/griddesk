@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "My date of birth is 1947-04-02.Could you please tell me my current account balance?###STOP###",
+ "usage": {
+  "input_tokens": 622,
+  "output_tokens": 66
+ },
+ "latency_ms": 479.5,
+ "cost_usd": 0.0001329
+}

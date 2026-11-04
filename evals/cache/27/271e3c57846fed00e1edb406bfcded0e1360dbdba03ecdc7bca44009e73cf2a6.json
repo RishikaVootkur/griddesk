@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your $75 credit for outage OUT-2610-05 has been applied to your account. Have a great day!",
+ "usage": {
+  "input_tokens": 2437,
+  "output_tokens": 29
+ },
+ "latency_ms": 7623.3
+}

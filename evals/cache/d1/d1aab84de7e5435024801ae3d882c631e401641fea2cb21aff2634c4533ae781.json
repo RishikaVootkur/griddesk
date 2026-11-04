@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I see the bill from October 2026. The total amount due is $317.06, and there's a $15.00 late payment fee because the previous bill wasn't paid by the due date. Would you like to waive the late fee?",
+ "usage": {
+  "input_tokens": 2459,
+  "output_tokens": 60
+ },
+ "latency_ms": 11996.2
+}

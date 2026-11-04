@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "My power was out for over a day during the storm earlier this week. I heard you give a credit for long outages—can you apply that to my account?",
+ "usage": {
+  "input_tokens": 485,
+  "output_tokens": 56
+ },
+ "latency_ms": 441.2,
+ "cost_usd": 0.00010635
+}

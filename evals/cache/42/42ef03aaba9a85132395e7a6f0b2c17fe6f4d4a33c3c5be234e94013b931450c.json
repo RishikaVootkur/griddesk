@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Thank you for providing your account details. I'll look into your bill and explain the usage for the period you mentioned. Please wait a moment while I retrieve the information.",
+ "usage": {
+  "input_tokens": 1964,
+  "output_tokens": 35
+ },
+ "latency_ms": 3687.3
+}

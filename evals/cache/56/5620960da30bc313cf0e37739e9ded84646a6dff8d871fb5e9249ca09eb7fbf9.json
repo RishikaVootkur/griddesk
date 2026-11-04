@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "1974-10-13.",
+ "usage": {
+  "input_tokens": 584,
+  "output_tokens": 21
+ },
+ "latency_ms": 226.8,
+ "cost_usd": 0.00010019999999999998
+}
