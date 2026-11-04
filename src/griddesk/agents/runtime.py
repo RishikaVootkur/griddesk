@@ -12,8 +12,15 @@ from griddesk.agents.graph import AgentConfig, AgentSpec, build_graph
 from griddesk.agents.toolbox import Toolbox
 from griddesk.gateway import Gateway
 
-BILLING_TOOLS = ("get_account_summary", "list_bills", "explain_bill", "apply_credit", "create_payment_plan",
-                 "dispute_bill", "request_meter_check")
+BILLING_TOOLS = (
+    "get_account_summary",
+    "list_bills",
+    "explain_bill",
+    "apply_credit",
+    "create_payment_plan",
+    "dispute_bill",
+    "request_meter_check",
+)
 ACCOUNT_TOOLS = ("verify_identity", "escalate_to_human")
 
 Design = Literal["single"]
@@ -33,8 +40,14 @@ class TurnResult:
 
 
 class ConversationRunner:
-    def __init__(self, toolbox: Toolbox, gateway: Gateway, config: AgentConfig, design: Design = "single",
-                 checkpointer: Any = None) -> None:
+    def __init__(
+        self,
+        toolbox: Toolbox,
+        gateway: Gateway,
+        config: AgentConfig,
+        design: Design = "single",
+        checkpointer: Any = None,
+    ) -> None:
         specs, entry = agent_specs(design)
         self.toolbox = toolbox
         self.gateway = gateway
@@ -47,8 +60,12 @@ class ConversationRunner:
     async def send(self, conversation_id: str, text: str) -> TurnResult:
         before = await self._message_count(conversation_id)
         await self.graph.ainvoke(
-            {"conversation_id": conversation_id, "messages": [{"role": "user", "content": text}], "steps": 0,
-             "error": None},
+            {
+                "conversation_id": conversation_id,
+                "messages": [{"role": "user", "content": text}],
+                "steps": 0,
+                "error": None,
+            },
             self._cfg(conversation_id),
         )
         return await self._result(conversation_id, before + 1)
@@ -74,5 +91,6 @@ class ConversationRunner:
         for task in snap.tasks:
             for intr in task.interrupts:
                 pending = intr.value
-        return TurnResult(reply="\n\n".join(texts), awaiting_approval=pending, error=snap.values.get("error"),
-                          agents=agents)
+        return TurnResult(
+            reply="\n\n".join(texts), awaiting_approval=pending, error=snap.values.get("error"), agents=agents
+        )
