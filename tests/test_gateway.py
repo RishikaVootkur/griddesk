@@ -377,3 +377,23 @@ def test_unsigned_tool_calls_get_the_placeholder_signature():
     msgs = [Message(role="assistant", tool_calls=[ToolCall(id="a", name="f", arguments={})])]
     _, contents = GeminiProvider.to_contents(msgs)
     assert contents[0]["parts"][0]["thoughtSignature"] == "skip_thought_signature_validator"
+
+
+def test_keyless_replay_computes_the_same_keys_as_the_live_recording(tmp_path):
+    from griddesk.gateway.providers import FINGERPRINTS, GroqProvider
+
+    live = GroqProvider("k", None)  # type: ignore[arg-type]
+    assert live.fingerprint == FINGERPRINTS["groq"]
+    recorder, _ = make([FakeProvider("groq", [resp(content="recorded")])], tmp_path)
+    recorder.providers["groq"].fingerprint = FINGERPRINTS["groq"]
+    run(recorder.complete(req("groq:openai/gpt-oss-120b")))
+    keyless = Gateway(providers={}, cache=DiskCache(tmp_path), cache_mode="replay_only")  # CI: no keys at all
+    r = run(keyless.complete(req("groq:openai/gpt-oss-120b")))
+    assert r.cached and r.content == "recorded"
+
+
+def test_cache_miss_names_every_model_tried(tmp_path):
+    gw, _ = make([], tmp_path, cache_mode="replay_only")
+    with pytest.raises(CacheMiss) as e:
+        run(gw.complete(req(), fallbacks=["groq:qwen/qwen3.8-27b"]))
+    assert "gemini:gemini-3.8-flash" in str(e.value) and "groq:qwen/qwen3.8-27b" in str(e.value)

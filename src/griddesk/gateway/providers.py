@@ -16,6 +16,16 @@ import httpx
 from griddesk.gateway.types import LLMRequest, LLMResponse, Message, ProviderError, ToolCall, Usage
 
 RETRYABLE_STATUS = {408, 409, 429, 500, 502, 503, 504}
+
+# Settings that shape model output, per provider, folded into cache keys (D5). They are fixed strings,
+# known even when a provider is not configured, so a keyless CI replay computes the same keys.
+GEMINI_THINKING = "low"
+OLLAMA_NUM_CTX = 16384
+FINGERPRINTS = {
+    "gemini": f"gemini/v1 thinking={GEMINI_THINKING}",
+    "groq": "groq/v1 reasoning=qwen:none,gpt-oss:low",
+    "ollama": f"ollama/v1 think=false num_ctx={OLLAMA_NUM_CTX}",
+}
 _THINK = re.compile(r"<think>.*?</think>\s*", re.S)
 
 
@@ -87,7 +97,9 @@ class GeminiProvider:
     name = "gemini"
     BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
-    def __init__(self, api_key: str, client: httpx.AsyncClient, thinking_level: str = "low") -> None:
+    def __init__(
+        self, api_key: str, client: httpx.AsyncClient, thinking_level: str = GEMINI_THINKING
+    ) -> None:
         self._key = api_key
         self._client = client
         self._thinking = thinking_level
@@ -288,7 +300,7 @@ class GroqProvider:
 class OllamaProvider:
     name = "ollama"
 
-    def __init__(self, base_url: str, client: httpx.AsyncClient, num_ctx: int = 16384) -> None:
+    def __init__(self, base_url: str, client: httpx.AsyncClient, num_ctx: int = OLLAMA_NUM_CTX) -> None:
         self._url = base_url.rstrip("/") + "/api/chat"
         self._client = client
         self._num_ctx = num_ctx

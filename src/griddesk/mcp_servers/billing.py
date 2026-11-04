@@ -8,7 +8,7 @@ from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
 from griddesk.mcp_servers.common import INTERNAL, ConversationId
-from griddesk.tools import approvals, billing
+from griddesk.tools import approvals, billing, registry  # noqa: F401 (registry registers executors)
 from griddesk.tools.common import ToolContext, run_tool
 
 AccountId = Annotated[str, Field(description="The customer's account number, e.g. 100482.")]
@@ -99,10 +99,3 @@ def build_billing_server(ctx: ToolContext) -> MCPServer:
         return approvals.execute(ctx, approval_request_id)
 
     return server
-
-
-def _credit_executor(ctx: ToolContext, conversation_id: str, **kwargs: object) -> billing.CreditOut:
-    return run_tool(billing.apply_credit, billing.CreditOut, ctx, conversation_id, **kwargs)
-
-
-approvals.register_executor("apply_credit", _credit_executor)

@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your $50 monthly payment plan is all set, and your power will remain on. Let us know if you need anything else. Thank you, goodbye!",
+ "usage": {
+  "input_tokens": 2205,
+  "output_tokens": 33
+ },
+ "latency_ms": 4592.5
+}

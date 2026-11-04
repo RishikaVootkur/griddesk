@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I have a question about my latest bill; the usage seems off because I was on vacation for two weeks during that period.",
+ "usage": {
+  "input_tokens": 492,
+  "output_tokens": 51
+ },
+ "latency_ms": 604.8,
+ "cost_usd": 0.00010439999999999999
+}

@@ -1,0 +1,21 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_yqm5bnn2",
+   "name": "apply_credit",
+   "arguments": {
+    "account_id": "102721",
+    "amount": "23.00",
+    "bill_id": "B-102721-2610",
+    "note": "Duplicate monthly customer charge on bill B-102721-2610",
+    "reason_code": "billing_error"
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 2728,
+  "output_tokens": 78
+ },
+ "latency_ms": 13403.8
+}

@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Yes, please go ahead and schedule the meter check.",
+ "usage": {
+  "input_tokens": 570,
+  "output_tokens": 25
+ },
+ "latency_ms": 408.4,
+ "cost_usd": 0.0001005
+}

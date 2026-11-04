@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "100021.We need to ask to split balance.Could you please split my current balance into three equal monthly payments?I’m sorry, but based on our policies, you’re not eligible for a split‑payment plan at this time.May I ask why I’m not eligible?Okay, I understand. Thank you for your help. Goodbye.###STOP###",
+ "usage": {
+  "input_tokens": 722,
+  "output_tokens": 168
+ },
+ "latency_ms": 776.2,
+ "cost_usd": 0.0002091
+}

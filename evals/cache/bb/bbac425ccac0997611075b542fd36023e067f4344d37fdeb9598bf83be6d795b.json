@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "A customer service representative has been alerted to assist you. One of our specialists will contact you shortly. Thank you for your patience!",
+ "usage": {
+  "input_tokens": 2377,
+  "output_tokens": 27
+ },
+ "latency_ms": 8713.2
+}
