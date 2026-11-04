@@ -279,3 +279,14 @@ class AuditLog(Base):
     outcome: Mapped[str] = mapped_column(String(20))  # ok | refused | pending_approval | error
     rule_id: Mapped[str | None] = mapped_column(String(8))
     details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # PII redacted before write
+
+
+class KbChunk(Base):
+    """Knowledge-base passages for policy search (seeded from the handbook)."""
+
+    __tablename__ = "kb_chunks"
+
+    id: Mapped[str] = mapped_column(String(24), primary_key=True)
+    source: Mapped[str] = mapped_column(String(24))  # handbook | bulletin
+    title: Mapped[str] = mapped_column(String(160))
+    text: Mapped[str] = mapped_column(Text)
