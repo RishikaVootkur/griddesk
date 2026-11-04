@@ -1,3 +1,4 @@
-# False positives: eval metric definitions (key: "latency_p50_ms") match the generic-api-key rule.
+# False positives: eval metric definitions in web/src/lib/metrics.ts match the generic-api-key rule.
 770ce86d7e1f7b29036385f2fcbcd46ef9df6510:web/src/lib/metrics.ts:generic-api-key:36
 770ce86d7e1f7b29036385f2fcbcd46ef9df6510:web/src/lib/metrics.ts:generic-api-key:37
+2f5122a3cfc6acec6c71a8c85bdab639234dfdc5:.gitleaksignore:generic-api-key:1
