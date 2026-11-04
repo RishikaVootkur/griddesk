@@ -61,6 +61,7 @@ def paired_test(
     b: Mapping[str, Sequence[float]],
     iters: int = DEFAULT_ITERS,
     seed: int = 0,
+    alpha: float = 0.05,
 ) -> PairedResult:
     """Compare two runs on the tasks they share.
 
@@ -84,7 +85,9 @@ def paired_test(
         p = float((np.sum(flipped >= observed - 1e-12) + 1) / (iters + 1))
     idx = rng.integers(0, len(d), size=(iters, len(d)))
     boot = d[idx].mean(axis=1)
-    ci = Interval(float(d.mean()), float(np.quantile(boot, 0.025)), float(np.quantile(boot, 0.975)))
+    ci = Interval(
+        float(d.mean()), float(np.quantile(boot, alpha / 2)), float(np.quantile(boot, 1 - alpha / 2))
+    )
     return PairedResult(
         len(shared), float(xa.mean()), float(xb.mean()), ci, p, int(np.sum(d > 0)), int(np.sum(d < 0))
     )
