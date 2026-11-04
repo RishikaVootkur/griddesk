@@ -42,21 +42,18 @@ export function TrialsTable({ run, onOpen }: { run: EvalRunDetail; onOpen: (t: E
               {rows.map((t) => {
                 const task = run.tasks[t.task_id];
                 return (
-                  <tr
-                    key={`${t.task_id}-${t.trial}`}
-                    tabIndex={0}
-                    onClick={() => onOpen(t)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        onOpen(t);
-                      }
-                    }}
-                    className="cursor-pointer hover:bg-brand-50/50 focus-visible:bg-brand-50"
-                    aria-label={`Open transcript for ${t.task_id} trial ${t.trial}`}
-                  >
+                  // The row is not interactive itself: a real button opens the transcript, and its
+                  // stretched ::after overlay lets a click anywhere on the row reach that button.
+                  <tr key={`${t.task_id}-${t.trial}`} className="relative hover:bg-brand-50/50 has-[button:focus-visible]:bg-brand-50">
                     <td className="px-4 py-2">
-                      <div className="font-mono text-xs break-all text-slate-800">{t.task_id}</div>
+                      <button
+                        type="button"
+                        onClick={() => onOpen(t)}
+                        className="text-left font-mono text-xs break-all text-brand-700 underline decoration-brand-200 underline-offset-2 after:absolute after:inset-0 hover:decoration-brand-500"
+                      >
+                        {t.task_id}
+                        <span className="sr-only">, trial {t.trial}: open transcript</span>
+                      </button>
                       {task && (
                         <div className="text-xs text-slate-500">
                           {task.title} · {task.difficulty}
