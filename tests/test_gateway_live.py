@@ -9,13 +9,19 @@ from griddesk.gateway import LLMRequest, Message, ToolSpec, build_gateway
 
 pytestmark = [
     pytest.mark.live,
-    pytest.mark.skipif(os.environ.get("GRIDDESK_LIVE") != "1", reason="set GRIDDESK_LIVE=1 to call real providers"),
+    pytest.mark.skipif(
+        os.environ.get("GRIDDESK_LIVE") != "1", reason="set GRIDDESK_LIVE=1 to call real providers"
+    ),
 ]
 
 TOOL = ToolSpec(
     name="get_balance",
     description="Get the balance for an account.",
-    parameters={"type": "object", "properties": {"account_id": {"type": "string"}}, "required": ["account_id"]},
+    parameters={
+        "type": "object",
+        "properties": {"account_id": {"type": "string"}},
+        "required": ["account_id"],
+    },
 )
 
 
@@ -31,8 +37,10 @@ def test_tool_round_trip(model, tmp_path):
         r1 = await gw.complete(LLMRequest(model=model, messages=msgs, tools=[TOOL]))
         assert r1.tool_calls and r1.tool_calls[0].name == "get_balance"
         call = r1.tool_calls[0]
-        msgs += [r1.as_message(), Message(role="tool", tool_call_id=call.id, name=call.name,
-                                          content='{"balance": "123.45"}')]
+        msgs += [
+            r1.as_message(),
+            Message(role="tool", tool_call_id=call.id, name=call.name, content='{"balance": "123.45"}'),
+        ]
         r2 = await gw.complete(LLMRequest(model=model, messages=msgs, tools=[TOOL]))
         assert "123.45" in r2.content
         return r1, r2
