@@ -140,7 +140,7 @@ def build_graph(
                 err = result.get("error") or {}
                 if err.get("code") == "needs_approval" and result.get("approval_request_id"):
                     pending.append({"id": result["approval_request_id"], "action": tc.name})
-                content = compact(result)
+                content = toolbox.render(tc.name, result, state["conversation_id"])
             new.append({"role": "tool", "tool_call_id": tc.id, "name": tc.name, "content": content})
         return {"messages": new, "pending": pending, **update}
 
