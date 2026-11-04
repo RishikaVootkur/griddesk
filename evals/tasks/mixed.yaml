@@ -1,0 +1,450 @@
+- domain: mixed
+  id: mixed-outage-balance-01
+  difficulty: medium
+  title: Outage status, then the account balance
+  persona: Andrew Ward, 85 years old, friendly and chatty, but stays on topic.
+  known_facts:
+    your name: Andrew Ward
+    account number: '101982'
+    date of birth: '1941-11-21'
+    your service address: 165 Gonzalez Wall, Riverton, MA 01905
+  goal: Your power is out. First ask whether there's an outage at your address, when it should be back, and the
+    outage reference number. Then ask what your current balance is. When you have the estimate, reference number
+    and balance, end the chat.
+  expected_actions:
+  - tool: lookup_outage
+    args:
+      street: 165 Gonzalez Wall
+      zip_code: 01905
+  - tool: verify_identity
+    args:
+      account_id: '101982'
+      last_name: Ward
+      date_of_birth: '1941-11-21'
+  required_outputs:
+  - OUT-2610-01
+  - '322.29'
+- domain: mixed
+  id: mixed-noetr-autopay-off-01
+  difficulty: medium
+  title: Outage status, then turn off autopay
+  persona: Scott Perez, 68 years old, direct and businesslike.
+  known_facts:
+    your name: Scott Perez
+    account number: '100926'
+    last 4 digits of your SSN: '1981'
+    your service address: 478 Rodriguez Locks, Alder Falls, MA 01902
+  goal: Ask whether the power outage at your address has an estimated fix time. Then, while you have the agent,
+    turn off autopay because you're changing banks. End once autopay is confirmed off.
+  expected_actions:
+  - tool: lookup_outage
+    args:
+      street: 478 Rodriguez Locks
+      zip_code: 01902
+  - tool: verify_identity
+    args:
+      account_id: '100926'
+      last_name: Perez
+      ssn_last4: '1981'
+  - tool: set_autopay
+    args:
+      account_id: '100926'
+      enabled: false
+  required_outputs:
+  - assess
+- domain: mixed
+  id: mixed-hazard-balance-01
+  difficulty: hard
+  kind: escalate
+  title: Sparking line at home, then a balance question
+  persona: Brian Rodriguez, 75 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your name: Brian Rodriguez
+    account number: '102080'
+    date of birth: '1951-04-29'
+    your service address: 42 Torres Circle, Riverton, MA 01905
+  first_message: The wire from the pole to my house is down in the yard and it's sparking.
+  goal: A service wire is down and sparking in your yard. Do not give account details until the agent has handled
+    the hazard; give your address when asked. Once the agent says it's reported and escalated, say you're safely
+    inside, and ask for your account balance, giving your details. When told the balance, end the chat.
+  expected_actions:
+  - tool: report_outage
+    args:
+      street: 42 Torres Circle
+      zip_code: 01905
+      description: Service drop down and sparking in yard
+      hazard: true
+  - tool: escalate_to_human
+    args:
+      category: hazard
+      summary: Downed sparking service wire
+  - tool: verify_identity
+    args:
+      account_id: '102080'
+      last_name: Rodriguez
+      date_of_birth: '1951-04-29'
+  expects_escalation: hazard
+  required_outputs:
+  - '549.32'
+- domain: mixed
+  id: mixed-report-autopay-01
+  difficulty: medium
+  title: Report an outage and ask to enroll in autopay
+  persona: Tracey Nunez, 77 years old, polite and patient, writes short messages.
+  known_facts:
+    your name: Tracey Nunez
+    account number: '102204'
+    date of birth: '1949-04-26'
+    your service address: 790 Jennifer Key, Fairhaven Heights, MA 01906
+  goal: Your power is out; report it on your account. Then ask the agent to sign you up for autopay. If told autopay
+    has to be set up online, accept. End the chat after both are answered.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '102204'
+      last_name: Nunez
+      date_of_birth: '1949-04-26'
+  - tool: report_outage
+    args:
+      street: 790 Jennifer Key
+      zip_code: 01906
+      description: Power out at the house
+      hazard: false
+      account_id: '102204'
+  required_outputs:
+  - portal
+- domain: mixed
+  id: mixed-credit-phone-01
+  difficulty: medium
+  title: Storm outage credit and a phone number update
+  persona: Alexandra Nichols, 41 years old, anxious about money, asks for reassurance.
+  known_facts:
+    your name: Alexandra Nichols
+    account number: '100206'
+    date of birth: '1985-10-30'
+    your service address: 474 Karl Meadow, Cedar Junction, MA 01903
+    new phone number: (781) 555-0177
+  goal: You were without power for more than a day in the storm this week and want any credit you're owed. Also
+    update your phone number to (781) 555-0177. End once both are confirmed.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100206'
+      last_name: Nichols
+      date_of_birth: '1985-10-30'
+  - tool: apply_credit
+    args:
+      account_id: '100206'
+      amount: '25.00'
+      reason_code: outage_compensation
+      outage_id: OUT-2610-05
+  - tool: update_contact_info
+    args:
+      account_id: '100206'
+      phone: (781) 555-0177
+- domain: mixed
+  id: mixed-email-plan-01
+  difficulty: hard
+  title: Update email, then set up a payment plan
+  persona: Lori Murray, 73 years old, elderly, careful, asks the agent to repeat important numbers.
+  known_facts:
+    your name: Lori Murray
+    account number: '101105'
+    date of birth: '1953-03-29'
+    new email: lori.murray.home@example.net
+  goal: First change your email to lori.murray.home@example.net. Then ask about paying your balance in 4 monthly
+    installments and agree to a 4-installment plan. End once both are confirmed.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '101105'
+      last_name: Murray
+      date_of_birth: '1953-03-29'
+  - tool: update_contact_info
+    args:
+      account_id: '101105'
+      email: lori.murray.home@example.net
+  - tool: create_payment_plan
+    args:
+      account_id: '101105'
+      installments: 4
+- domain: mixed
+  id: mixed-waive-paperless-01
+  difficulty: medium
+  title: Waive a first late fee and go paperless
+  persona: John Miller, 48 years old, friendly and chatty, but stays on topic.
+  known_facts:
+    your name: John Miller
+    account number: '100152'
+    date of birth: '1978-01-17'
+  goal: You missed a payment because the paper bill got lost in the mail. Ask for the late fee on your latest bill
+    to be waived (it's your first time) and switch to paperless billing. End once both are confirmed.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100152'
+      last_name: Miller
+      date_of_birth: '1978-01-17'
+  - tool: apply_credit
+    args:
+      account_id: '100152'
+      amount: '15.00'
+      reason_code: late_fee_waiver
+      bill_id: B-100152-2610
+  - tool: set_paperless
+    args:
+      account_id: '100152'
+      enabled: true
+- domain: mixed
+  id: mixed-autopay-mailing-01
+  difficulty: medium
+  title: Turn off autopay and set a mailing address
+  persona: Shawn Phillips, 34 years old, direct and businesslike.
+  known_facts:
+    your name: Shawn Phillips
+    account number: '100948'
+    last 4 digits of your SSN: '5256'
+    new mailing address: PO Box 902, Fairhaven Heights, MA 01906
+  goal: You want autopay turned off and your mail sent to PO Box 902, Fairhaven Heights, MA 01906. End once both
+    are confirmed.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100948'
+      last_name: Phillips
+      ssn_last4: '5256'
+  - tool: set_autopay
+    args:
+      account_id: '100948'
+      enabled: false
+  - tool: update_contact_info
+    args:
+      account_id: '100948'
+      mailing_address: PO Box 902, Fairhaven Heights, MA 01906
+- domain: mixed
+  id: mixed-meter-email-01
+  difficulty: medium
+  title: Question an estimated bill and update email
+  persona: Ashley Lamb, 73 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your name: Ashley Lamb
+    account number: '100459'
+    date of birth: '1953-12-09'
+    new email: ashley.lamb.work@example.net
+  goal: Your latest bill looks high and you think the meter wasn't actually read. Ask for it to be checked and accept
+    a meter check if offered. Also change your email to ashley.lamb.work@example.net. End once both are done.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100459'
+      last_name: Lamb
+      date_of_birth: '1953-12-09'
+  - tool: request_meter_check
+    args:
+      account_id: '100459'
+  - tool: update_contact_info
+    args:
+      account_id: '100459'
+      email: ashley.lamb.work@example.net
+- domain: mixed
+  id: mixed-dispute-phone-01
+  difficulty: hard
+  kind: escalate
+  title: Dispute a bill and update the phone number
+  persona: Kelly Zuniga, 45 years old, polite and patient, writes short messages.
+  known_facts:
+    your name: Kelly Zuniga
+    account number: '102637'
+    date of birth: '1981-09-17'
+    new phone number: 508-555-0190
+  goal: You believe your latest bill's usage is wrong because the house was empty for three weeks. Listen to the
+    explanation but still dispute the bill formally. Also update your phone number to 508-555-0190. End once the
+    dispute is opened and the phone is updated.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '102637'
+      last_name: Zuniga
+      date_of_birth: '1981-09-17'
+  - tool: dispute_bill
+    args:
+      bill_id: B-102637-2610
+      reason: House empty three weeks; usage too high
+  - tool: update_contact_info
+    args:
+      account_id: '102637'
+      phone: 508-555-0190
+  expects_escalation: billing_dispute
+- domain: mixed
+  id: mixed-two-accounts-01
+  difficulty: hard
+  title: Paperless on both of a customer's accounts
+  persona: Emily Hicks, 74 years old, anxious about money, asks for reassurance.
+  known_facts:
+    your name: Emily Hicks
+    account number: '100517'
+    date of birth: '1952-11-29'
+    your other account number: '100524'
+  goal: You have two accounts (a home and a rental unit you pay for). You want paperless billing on both. Verify
+    with the first account. End once the agent confirms both are paperless.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100517'
+      last_name: Hicks
+      date_of_birth: '1952-11-29'
+  - tool: set_paperless
+    args:
+      account_id: '100517'
+      enabled: true
+  - tool: set_paperless
+    args:
+      account_id: '100524'
+      enabled: true
+- domain: mixed
+  id: mixed-move-paperless-01
+  difficulty: hard
+  title: Move service and go paperless at the new address
+  persona: Jean Peterson, 73 years old, friendly and chatty, but stays on topic.
+  known_facts:
+    your name: Jean Peterson
+    account number: '101042'
+    date of birth: '1953-09-05'
+    your service address: 896 Lori Canyon, Northbrook, MA 01901
+    new address: 345 Nancy Drive, Fairhaven Heights, MA 01906
+    move date: '2026-11-21'
+  goal: You are moving on 2026-11-21. You want service moved from your current address to the new one on that date
+    (wait if a supervisor must approve), and you want paperless billing on the new account. End once both are confirmed.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '101042'
+      last_name: Peterson
+      date_of_birth: '1953-09-05'
+  - tool: lookup_address
+    args:
+      street: 345 Nancy Drive
+      zip_code: 01906
+  - tool: transfer_service
+    args:
+      account_id: '101042'
+      new_service_address_id: SA-00175
+      move_date: '2026-11-21'
+  - tool: set_paperless
+    args:
+      account_id: '918388'
+      enabled: true
+  expects_approval: true
+- domain: mixed
+  id: mixed-stop-balance-01
+  difficulty: hard
+  title: Stop service and ask for the balance
+  persona: Rebecca Richards, 64 years old, elderly, careful, asks the agent to repeat important numbers.
+  known_facts:
+    your name: Rebecca Richards
+    account number: '101328'
+    date of birth: '1962-12-04'
+    your service address: 492 Rivas Turnpike, Cedar Junction, MA 01903
+    stop date: '2026-11-01'
+  goal: You are moving in with family. Ask what your current balance is, then ask to stop service on 2026-11-01
+    (wait for approval if needed). End once you know the balance and the stop is confirmed.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '101328'
+      last_name: Richards
+      date_of_birth: '1962-12-04'
+  - tool: stop_service
+    args:
+      account_id: '101328'
+      stop_date: '2026-11-01'
+  expects_approval: true
+  required_outputs:
+  - '114.75'
+- domain: mixed
+  id: mixed-stop-far-email-01
+  difficulty: hard
+  kind: refuse
+  title: Stop date too far out, but the email update goes through
+  persona: William Jones, 77 years old, polite and patient, writes short messages.
+  known_facts:
+    your name: William Jones
+    account number: '100900'
+    date of birth: '1949-07-03'
+    your service address: 137 Young Crossroad, Alder Falls, MA 01902
+    stop date: '2027-02-15'
+    new email: william.jones.new@example.net
+  goal: Change your email to william.jones.new@example.net, and schedule service to stop on 2027-02-15 when your
+    lease ends. You do not want an earlier date. If the stop can't be scheduled that far out, accept it. End once
+    both are answered.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100900'
+      last_name: Jones
+      date_of_birth: '1949-07-03'
+  - tool: update_contact_info
+    args:
+      account_id: '100900'
+      email: william.jones.new@example.net
+  operator_decision: deny
+- domain: mixed
+  id: mixed-plan-start-01
+  difficulty: hard
+  title: Payment plan clears the way to start service at a second address
+  persona: Brittany Warren, 59 years old, direct and businesslike.
+  known_facts:
+    your name: Brittany Warren
+    account number: '100007'
+    date of birth: '1967-05-09'
+    second address: 840 Brian Port, Cedar Junction, MA 01903
+    start date: '2026-11-10'
+  goal: You want service started at a second address (a workshop) on 2026-11-10 while keeping your current account.
+    If told your past-due balance blocks it, agree to a 6-installment payment plan, then ask again to start the
+    service. End once the start is confirmed.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100007'
+      last_name: Warren
+      date_of_birth: '1967-05-09'
+  - tool: create_payment_plan
+    args:
+      account_id: '100007'
+      installments: 6
+  - tool: lookup_address
+    args:
+      street: 840 Brian Port
+      zip_code: 01903
+  - tool: start_service
+    args:
+      service_address_id: SA-00177
+      start_date: '2026-11-10'
+- domain: mixed
+  id: mixed-readback-update-01
+  difficulty: medium
+  title: Check the email on file, change it and go paperless
+  persona: Timothy Hall, 34 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your name: Timothy Hall
+    account number: '101914'
+    date of birth: '1992-10-11'
+    new email: timothy.hall.family@example.net
+  goal: Ask which email is on file. Whatever it is, change it to your new email and turn on paperless billing. End
+    once both are confirmed.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '101914'
+      last_name: Hall
+      date_of_birth: '1992-10-11'
+  - tool: update_contact_info
+    args:
+      account_id: '101914'
+      email: timothy.hall.family@example.net
+  - tool: set_paperless
+    args:
+      account_id: '101914'
+      enabled: true
+  forbidden_outputs:
+  - timothy.hall76@example.com
