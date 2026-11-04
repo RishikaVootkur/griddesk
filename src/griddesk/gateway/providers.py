@@ -1,0 +1,308 @@
+"""Provider adapters: Gemini (REST), Groq (OpenAI-compatible) and Ollama (native chat API).
+
+Each adapter turns an `LLMRequest` into the provider's wire format, and the reply into an
+`LLMResponse`. HTTP errors become `ProviderError`, marked retryable for rate limits, server
+errors and timeouts. Adapters never log request bodies or headers, which carry keys and PII.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from typing import Any, Protocol
+
+import httpx
+
+from griddesk.gateway.types import LLMRequest, LLMResponse, Message, ProviderError, ToolCall, Usage
+
+RETRYABLE_STATUS = {408, 409, 429, 500, 502, 503, 504}
+_THINK = re.compile(r"<think>.*?</think>\s*", re.S)
+
+
+class Provider(Protocol):
+    name: str
+
+    async def complete(self, req: LLMRequest) -> LLMResponse: ...
+
+
+def _parse_retry_after(value: str | None) -> float | None:
+    if not value:
+        return None
+    m = re.match(r"^\s*([\d.]+)\s*(ms|s|m)?\s*$", value)
+    if not m:
+        return None
+    n = float(m.group(1))
+    return {"ms": n / 1000, "m": n * 60}.get(m.group(2) or "s", n)
+
+
+def _tool_result_payload(content: str) -> Any:
+    try:
+        return json.loads(content)
+    except (json.JSONDecodeError, TypeError):
+        return content
+
+
+async def _post(client: httpx.AsyncClient, url: str, body: dict[str, Any], headers: dict[str, str]) -> Any:
+    try:
+        r = await client.post(url, json=body, headers=headers)
+    except (httpx.TimeoutException, httpx.TransportError) as e:
+        raise ProviderError(f"transport error: {type(e).__name__}", retryable=True) from None
+    if r.status_code != 200:
+        retry_after = _parse_retry_after(r.headers.get("retry-after"))
+        detail = r.text[:300]
+        if retry_after is None:
+            m = re.search(r'"retryDelay":\s*"([\d.]+s)"', r.text)
+            retry_after = _parse_retry_after(m.group(1)) if m else None
+        retryable = r.status_code in RETRYABLE_STATUS or "tool_use_failed" in detail
+        raise ProviderError(
+            f"HTTP {r.status_code}: {detail}",
+            status=r.status_code,
+            retryable=retryable,
+            retry_after=retry_after,
+        )
+    return r.json()
+
+
+class GeminiProvider:
+    name = "gemini"
+    BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+
+    def __init__(self, api_key: str, client: httpx.AsyncClient, thinking_level: str = "low") -> None:
+        self._key = api_key
+        self._client = client
+        self._thinking = thinking_level
+
+    @staticmethod
+    def to_contents(messages: list[Message]) -> tuple[str, list[dict[str, Any]]]:
+        system = "\n\n".join(m.content for m in messages if m.role == "system")
+        contents: list[dict[str, Any]] = []
+        for m in messages:
+            if m.role == "system":
+                continue
+            parts: list[dict[str, Any]]
+            if m.role == "user":
+                role, parts = "user", [{"text": m.content}]
+            elif m.role == "assistant":
+                role, parts = "model", []
+                if m.content:
+                    part: dict[str, Any] = {"text": m.content}
+                    if m.signature and not m.tool_calls:
+                        part["thoughtSignature"] = m.signature
+                    parts.append(part)
+                for tc in m.tool_calls:
+                    fc: dict[str, Any] = {
+                        "functionCall": {"name": tc.name, "args": tc.arguments, "id": tc.id}
+                    }
+                    if tc.signature:
+                        fc["thoughtSignature"] = tc.signature
+                    parts.append(fc)
+                if not parts:
+                    parts = [{"text": ""}]
+            else:  # tool result
+                role = "user"
+                parts = [
+                    {
+                        "functionResponse": {
+                            "name": m.name,
+                            "id": m.tool_call_id,
+                            "response": {"result": _tool_result_payload(m.content)},
+                        }
+                    }
+                ]
+            # Gemini wants alternating turns: merge consecutive same-role contents (parallel tool results).
+            if contents and contents[-1]["role"] == role:
+                contents[-1]["parts"].extend(parts)
+            else:
+                contents.append({"role": role, "parts": parts})
+        return system, contents
+
+    async def complete(self, req: LLMRequest) -> LLMResponse:
+        system, contents = self.to_contents(req.messages)
+        gen: dict[str, Any] = {"temperature": req.temperature, "maxOutputTokens": req.max_output_tokens}
+        if req.model_name.startswith("gemini-3"):
+            gen["thinkingConfig"] = {"thinkingLevel": self._thinking}
+        if req.json_mode:
+            gen["responseMimeType"] = "application/json"
+        body: dict[str, Any] = {"contents": contents, "generationConfig": gen}
+        if system:
+            body["systemInstruction"] = {"parts": [{"text": system}]}
+        if req.tools:
+            body["tools"] = [
+                {
+                    "functionDeclarations": [
+                        {"name": t.name, "description": t.description, "parametersJsonSchema": t.parameters}
+                        for t in req.tools
+                    ]
+                }
+            ]
+        data = await _post(
+            self._client, f"{self.BASE}/{req.model_name}:generateContent", body, {"x-goog-api-key": self._key}
+        )
+        cands = data.get("candidates") or []
+        parts = (cands[0].get("content") or {}).get("parts", []) if cands else []
+        text, calls, sig = [], [], None
+        for i, p in enumerate(parts):
+            if p.get("thought"):
+                continue
+            if "functionCall" in p:
+                fc = p["functionCall"]
+                calls.append(
+                    ToolCall(
+                        id=fc.get("id") or f"call_{i}",
+                        name=fc["name"],
+                        arguments=fc.get("args") or {},
+                        signature=p.get("thoughtSignature"),
+                    )
+                )
+            elif "text" in p:
+                text.append(p["text"])
+                sig = p.get("thoughtSignature") or sig
+        um = data.get("usageMetadata", {})
+        usage = Usage(
+            input_tokens=um.get("promptTokenCount", 0),
+            output_tokens=um.get("candidatesTokenCount", 0) + um.get("thoughtsTokenCount", 0),
+        )
+        return LLMResponse(
+            model=req.model, content="".join(text), tool_calls=calls, signature=sig, usage=usage
+        )
+
+
+def _openai_messages(messages: list[Message]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for m in messages:
+        if m.role == "tool":
+            out.append({"role": "tool", "tool_call_id": m.tool_call_id, "content": m.content})
+        elif m.role == "assistant" and m.tool_calls:
+            out.append(
+                {
+                    "role": "assistant",
+                    "content": m.content or None,
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {"name": tc.name, "arguments": json.dumps(tc.arguments)},
+                        }
+                        for tc in m.tool_calls
+                    ],
+                }
+            )
+        else:
+            out.append({"role": m.role, "content": m.content})
+    return out
+
+
+def _parse_arguments(raw: Any) -> dict[str, Any]:
+    if isinstance(raw, dict):
+        return raw
+    try:
+        val = json.loads(raw or "{}")
+    except json.JSONDecodeError:
+        return {"_unparsed": str(raw)}
+    return val if isinstance(val, dict) else {"_unparsed": str(raw)}
+
+
+class GroqProvider:
+    name = "groq"
+    URL = "https://api.groq.com/openai/v1/chat/completions"
+
+    def __init__(self, api_key: str, client: httpx.AsyncClient) -> None:
+        self._key = api_key
+        self._client = client
+
+    async def complete(self, req: LLMRequest) -> LLMResponse:
+        body: dict[str, Any] = {
+            "model": req.model_name,
+            "messages": _openai_messages(req.messages),
+            "temperature": req.temperature,
+            "max_completion_tokens": req.max_output_tokens,
+        }
+        if req.model_name.startswith("qwen/"):
+            body["reasoning_effort"] = "none"
+        elif req.model_name.startswith("openai/gpt-oss"):
+            body["reasoning_effort"] = "low"
+        if req.tools:
+            body["tools"] = [{"type": "function", "function": t.model_dump()} for t in req.tools]
+        if req.json_mode:
+            body["response_format"] = {"type": "json_object"}
+        data = await _post(self._client, self.URL, body, {"Authorization": f"Bearer {self._key}"})
+        msg = data["choices"][0]["message"]
+        calls = [
+            ToolCall(
+                id=tc["id"],
+                name=tc["function"]["name"],
+                arguments=_parse_arguments(tc["function"].get("arguments")),
+            )
+            for tc in msg.get("tool_calls") or []
+        ]
+        u = data.get("usage", {})
+        return LLMResponse(
+            model=req.model,
+            content=_THINK.sub("", msg.get("content") or ""),
+            tool_calls=calls,
+            usage=Usage(input_tokens=u.get("prompt_tokens", 0), output_tokens=u.get("completion_tokens", 0)),
+        )
+
+
+class OllamaProvider:
+    name = "ollama"
+
+    def __init__(self, base_url: str, client: httpx.AsyncClient, num_ctx: int = 16384) -> None:
+        self._url = base_url.rstrip("/") + "/api/chat"
+        self._client = client
+        self._num_ctx = num_ctx
+
+    @staticmethod
+    def to_messages(messages: list[Message]) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for m in messages:
+            if m.role == "tool":
+                out.append({"role": "tool", "tool_name": m.name, "content": m.content})
+            elif m.role == "assistant" and m.tool_calls:
+                out.append(
+                    {
+                        "role": "assistant",
+                        "content": m.content,
+                        "tool_calls": [
+                            {"function": {"name": tc.name, "arguments": tc.arguments}} for tc in m.tool_calls
+                        ],
+                    }
+                )
+            else:
+                out.append({"role": m.role, "content": m.content})
+        return out
+
+    async def complete(self, req: LLMRequest) -> LLMResponse:
+        body: dict[str, Any] = {
+            "model": req.model_name,
+            "messages": self.to_messages(req.messages),
+            "stream": False,
+            "think": False,
+            "options": {
+                "temperature": req.temperature,
+                "num_predict": req.max_output_tokens,
+                "num_ctx": self._num_ctx,
+            },
+        }
+        if req.tools:
+            body["tools"] = [{"type": "function", "function": t.model_dump()} for t in req.tools]
+        if req.json_mode:
+            body["format"] = "json"
+        data = await _post(self._client, self._url, body, {})
+        msg = data.get("message", {})
+        calls = [
+            ToolCall(
+                id=tc.get("id") or f"call_{i}",
+                name=tc["function"]["name"],
+                arguments=_parse_arguments(tc["function"].get("arguments")),
+            )
+            for i, tc in enumerate(msg.get("tool_calls") or [])
+        ]
+        return LLMResponse(
+            model=req.model,
+            content=_THINK.sub("", msg.get("content") or ""),
+            tool_calls=calls,
+            usage=Usage(
+                input_tokens=data.get("prompt_eval_count", 0), output_tokens=data.get("eval_count", 0)
+            ),
+        )
