@@ -15,8 +15,9 @@ interface Settled<T> {
 }
 
 /**
- * Run an async loader whenever the JSON value of `deps` changes, optionally re-running
- * every `pollMs`. Keeps the last good data while a refresh is in flight so lists do not flicker.
+ * Run an async loader whenever the JSON value of `deps` changes. With `pollMs`, the next
+ * load is scheduled `pollMs` after the previous one settles, so a slow request is never
+ * cancelled by the poll timer. Keeps the last good data while a refresh is in flight.
  */
 export function useAsync<T>(loader: () => Promise<T>, deps: unknown[], pollMs?: number): AsyncState<T> {
   const [tick, setTick] = useState(0);
@@ -31,20 +32,22 @@ export function useAsync<T>(loader: () => Promise<T>, deps: unknown[], pollMs?: 
 
   useEffect(() => {
     let cancelled = false;
-    loaderRef.current().then(
-      (data) => !cancelled && setSettled({ key, data, error: null }),
-      (e: unknown) => !cancelled && setSettled((s) => ({ key, data: s.data, error: describeError(e) })),
-    );
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleNext = () => {
+      if (!cancelled && pollMs) timer = setTimeout(reload, pollMs);
+    };
+    loaderRef
+      .current()
+      .then(
+        (data) => !cancelled && setSettled({ key, data, error: null }),
+        (e: unknown) => !cancelled && setSettled((s) => ({ key, data: s.data, error: describeError(e) })),
+      )
+      .finally(scheduleNext);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
-  }, [key]);
-
-  useEffect(() => {
-    if (!pollMs) return;
-    const id = setInterval(reload, pollMs);
-    return () => clearInterval(id);
-  }, [pollMs, reload]);
+  }, [key, pollMs, reload]);
 
   return { data: settled.data, error: settled.error, loading: settled.key !== key, reload };
 }
