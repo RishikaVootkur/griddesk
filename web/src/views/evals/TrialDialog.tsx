@@ -5,29 +5,34 @@ import { Button, Pill } from "../../components/ui";
 import { usd } from "../../lib/format";
 
 export function TrialDialog({ trial, task, onClose }: { trial: EvalTrial; task: EvalTaskInfo | undefined; onClose: () => void }) {
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
+  // A native modal <dialog> traps focus and handles Escape. We also return focus to the
+  // element that opened it, since the dialog is unmounted rather than closed.
   useEffect(() => {
-    closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (!dialog.open) dialog.showModal();
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
-      document.removeEventListener("keydown", onKey);
+      if (dialog.open) dialog.close();
       document.body.style.overflow = prev;
+      opener?.focus();
     };
-  }, [onClose]);
+  }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 sm:items-center sm:p-6" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="trial-title"
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
-      >
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="trial-title"
+      onClose={onClose}
+      // A click on the backdrop targets the <dialog> itself; clicks inside hit its children.
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      className="m-auto h-fit max-h-[92dvh] w-[calc(100%-1.5rem)] max-w-3xl overflow-hidden rounded-2xl bg-white p-0 shadow-xl backdrop:bg-slate-900/40"
+    >
+      <div className="flex max-h-[92dvh] flex-col">
         <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
           <div className="min-w-0">
             <h2 id="trial-title" className="truncate font-mono text-sm font-semibold text-slate-900">
@@ -44,7 +49,7 @@ export function TrialDialog({ trial, task, onClose }: { trial: EvalTrial; task: 
               ))}
             </div>
           </div>
-          <Button ref={closeRef} variant="ghost" onClick={onClose} aria-label="Close transcript">
+          <Button variant="ghost" onClick={onClose} aria-label="Close transcript" autoFocus>
             Close
           </Button>
         </header>
@@ -77,6 +82,6 @@ export function TrialDialog({ trial, task, onClose }: { trial: EvalTrial; task: 
           )}
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
