@@ -97,7 +97,9 @@ async def test_late_fee_waiver_once_then_refused(ctx):
     assert second["ok"] is False and second["error"]["rule_id"] == "P-08"
     with ctx.sessions() as s:
         assert s.scalar(select(func.count()).select_from(m.Credit).where(m.Credit.account_id == acct.id)) == 1
-        refused = s.scalars(select(m.AuditLog).where(m.AuditLog.outcome == "refused")).all()
+        refused = s.scalars(
+            select(m.AuditLog).where(m.AuditLog.outcome == "refused").order_by(m.AuditLog.id)
+        ).all()
         assert refused and refused[-1].rule_id == "P-08"
 
 
@@ -260,3 +262,156 @@ async def test_bad_arguments_are_rejected_by_the_schema(ctx):
             {"conversation_id": CONV, "account_id": "1", "amount": "5", "reason_code": "because"},
         )
     assert r.is_error
+
+
+async def test_unverified_caller_cannot_probe_bill_ids(ctx):
+    acct = one(ctx, WAIVABLE)
+    async with Client(build_billing_server(ctx)) as c:
+        real = await call(c, "explain_bill", conversation_id=CONV, bill_id=acct.bill_id)
+        fake = await call(c, "explain_bill", conversation_id=CONV, bill_id="B-999999-2609")
+    assert real["error"] == fake["error"] and real["error"]["rule_id"] == "P-01"
+
+
+async def test_verified_caller_cannot_tell_missing_from_foreign_accounts(ctx):
+    acct = one(ctx, WAIVABLE)
+    other = one(
+        ctx, "select id from accounts where customer_id <> :c order by id limit 1", c=acct.customer_id
+    )
+    verify(ctx, CONV, acct.customer_id)
+    async with Client(build_billing_server(ctx)) as c:
+        foreign = await call(c, "get_account_summary", conversation_id=CONV, account_id=other.id)
+        missing = await call(c, "get_account_summary", conversation_id=CONV, account_id="999999")
+    assert foreign["error"] == missing["error"] and foreign["error"]["rule_id"] == "P-02"
+
+
+async def test_conversation_credit_cap_and_wrong_waiver_amount(ctx):
+    acct = one(ctx, WAIVABLE)
+    verify(ctx, CONV, acct.customer_id)
+    async with Client(build_billing_server(ctx)) as c:
+        wrong = await call(
+            c,
+            "apply_credit",
+            conversation_id=CONV,
+            account_id=acct.id,
+            amount="20.00",
+            reason_code="late_fee_waiver",
+            bill_id=acct.bill_id,
+        )
+        no_bill = await call(
+            c,
+            "apply_credit",
+            conversation_id=CONV,
+            account_id=acct.id,
+            amount="20.00",
+            reason_code="billing_error",
+        )
+        big = await call(
+            c,
+            "apply_credit",
+            conversation_id=CONV,
+            account_id=acct.id,
+            amount="190.00",
+            reason_code="goodwill",
+        )
+        approvals.decide(ctx, big["approval_request_id"], "approve", operator="op")
+        assert (await call(c, "execute_approved_action", approval_request_id=big["approval_request_id"]))[
+            "ok"
+        ]
+        over = await call(
+            c,
+            "apply_credit",
+            conversation_id=CONV,
+            account_id=acct.id,
+            amount="15.00",
+            reason_code="late_fee_waiver",
+            bill_id=acct.bill_id,
+        )
+    assert wrong["error"]["rule_id"] == "P-08"
+    assert no_bill["error"]["rule_id"] == "P-11"
+    assert over["error"]["rule_id"] == "P-10"  # 190 + 15 > 200 in one conversation
+
+
+async def test_approval_cannot_be_used_with_other_arguments_or_conversation(ctx):
+    from griddesk.tools import billing
+    from griddesk.tools.common import run_tool
+
+    acct = one(ctx, WAIVABLE)
+    verify(ctx, CONV, acct.customer_id)
+    verify(ctx, "conv-other", acct.customer_id)
+    async with Client(build_billing_server(ctx)) as c:
+        out = await call(
+            c,
+            "apply_credit",
+            conversation_id=CONV,
+            account_id=acct.id,
+            amount="20.00",
+            reason_code="goodwill",
+        )
+    apr = out["approval_request_id"]
+    approvals.decide(ctx, apr, "approve", operator="op")
+    bigger = run_tool(
+        billing.apply_credit,
+        billing.CreditOut,
+        ctx,
+        CONV,
+        acct.id,
+        "40.00",
+        "goodwill",
+        approval_request_id=apr,
+    )
+    elsewhere = run_tool(
+        billing.apply_credit,
+        billing.CreditOut,
+        ctx,
+        "conv-other",
+        acct.id,
+        "20.00",
+        "goodwill",
+        approval_request_id=apr,
+    )
+    assert bigger.ok is False and bigger.error.code == "needs_approval"
+    assert elsewhere.ok is False and elsewhere.error.code == "needs_approval"
+    assert approvals.get(ctx, apr).status == "approved"  # still unused
+
+
+async def test_executing_the_same_approval_twice_credits_once(ctx):
+    acct = one(ctx, WAIVABLE)
+    verify(ctx, CONV, acct.customer_id)
+    async with Client(build_billing_server(ctx)) as c:
+        out = await call(
+            c,
+            "apply_credit",
+            conversation_id=CONV,
+            account_id=acct.id,
+            amount="30.00",
+            reason_code="goodwill",
+        )
+        approvals.decide(ctx, out["approval_request_id"], "approve", operator="op")
+        results = [approvals.execute(ctx, out["approval_request_id"]) for _ in range(2)]
+    assert [r.ok for r in results] == [True, False]
+    with ctx.sessions() as s:
+        n = s.scalar(select(func.count()).select_from(m.Credit).where(m.Credit.account_id == acct.id))
+    assert n == 1
+
+
+async def test_notes_and_dispute_reasons_are_redacted(ctx):
+    acct = one(ctx, WAIVABLE)
+    verify(ctx, CONV, acct.customer_id)
+    async with Client(build_billing_server(ctx)) as c:
+        out = await call(
+            c,
+            "apply_credit",
+            conversation_id=CONV,
+            account_id=acct.id,
+            amount="10.00",
+            reason_code="goodwill",
+            note="card 4111 1111 1111 1111 mail a@b.com",
+        )
+        await call(
+            c, "dispute_bill", conversation_id=CONV, bill_id=acct.bill_id, reason="call me at 617-555-0100"
+        )
+    req = approvals.get(ctx, out["approval_request_id"])
+    assert "4111" not in req.arguments["note"] and "a@b.com" not in req.arguments["note"]
+    with ctx.sessions() as s:
+        summary = s.scalars(select(m.Escalation.summary).where(m.Escalation.conversation_id == CONV)).one()
+    assert "617-555-0100" not in summary
