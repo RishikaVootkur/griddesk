@@ -14,4 +14,5 @@ ConversationId = Annotated[
 
 # Tools carrying this meta are for the runtime (e.g. executing approved actions) and are never shown
 # to the model. They are still safe if called directly: they act only on database-approved requests.
-INTERNAL: dict[str, Any] = {"griddesk/internal": True}
+INTERNAL_KEY = "griddesk/internal"
+INTERNAL: dict[str, Any] = {INTERNAL_KEY: True}

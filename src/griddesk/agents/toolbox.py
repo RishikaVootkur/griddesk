@@ -19,9 +19,11 @@ from mcp import Client
 from mcp.server.mcpserver import MCPServer
 
 from griddesk.gateway import ToolSpec
-from griddesk.mcp_servers.common import INTERNAL
+from griddesk.logging import redact_value
+from griddesk.mcp_servers.common import INTERNAL_KEY
 
 RUNTIME_ARGS = {"conversation_id"}
+SENSITIVE_ARGS = {"date_of_birth", "ssn_last4"}
 
 
 @dataclass
@@ -58,9 +60,11 @@ class Toolbox:
             client = await tb._stack.enter_async_context(Client(target))
             tb.clients[name] = client
             for t in (await client.list_tools()).tools:
-                if (t.meta or {}).get(next(iter(INTERNAL))):
+                if (t.meta or {}).get(INTERNAL_KEY):
                     tb.internal.setdefault(name, set()).add(t.name)
                     continue
+                if t.name in tb.specs:
+                    raise ValueError(f"tool {t.name} is exposed by both {tb.server_of[t.name]} and {name}")
                 schema = copy.deepcopy(t.input_schema)
                 for arg in RUNTIME_ARGS:
                     schema.get("properties", {}).pop(arg, None)
@@ -89,9 +93,11 @@ class Toolbox:
     ) -> dict[str, Any]:
         """Run a model-requested tool call and return its structured result."""
         args = {k: v for k, v in arguments.items() if k not in RUNTIME_ARGS}
+        # Call logs feed run files: identity answers are masked, everything else goes through redaction.
+        logged = redact_value({k: ("<redacted>" if k in SENSITIVE_ARGS else v) for k, v in args.items()})
         if name not in self.specs or (allowed is not None and name not in allowed):
             self.calls.append(
-                ToolCallLog(conversation_id, agent, name, args, False, False, False, "unknown_tool")
+                ToolCallLog(conversation_id, agent, name, logged, False, False, False, "unknown_tool")
             )
             return {
                 "ok": False,
@@ -105,7 +111,7 @@ class Toolbox:
         if result.is_error or result.structured_content is None:
             text = " ".join(getattr(c, "text", "") for c in result.content)[:400]
             self.calls.append(
-                ToolCallLog(conversation_id, agent, name, args, True, False, False, "invalid_request")
+                ToolCallLog(conversation_id, agent, name, logged, True, False, False, "invalid_request")
             )
             return {
                 "ok": False,
@@ -119,7 +125,7 @@ class Toolbox:
                 conversation_id,
                 agent,
                 name,
-                args,
+                logged,
                 True,
                 not unknown_args,
                 bool(out.get("ok")),
@@ -137,7 +143,10 @@ class Toolbox:
         result = await self.clients[server].call_tool(
             "execute_approved_action", {"approval_request_id": approval_request_id}
         )
-        return result.structured_content or {"ok": False}
+        if result.is_error or result.structured_content is None:
+            text = " ".join(getattr(c, "text", "") for c in result.content)[:300]
+            return {"ok": False, "error": {"code": "invalid_request", "message": text or "execution failed"}}
+        return result.structured_content
 
     def record_handoff(
         self, conversation_id: str, source: str, target: str, arguments: dict[str, Any]
