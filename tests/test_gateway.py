@@ -213,6 +213,7 @@ def test_gemini_wire_format_merges_parallel_tool_results_and_keeps_signatures():
     assert system == "rules"
     assert [c["role"] for c in contents] == ["user", "model", "user"]
     assert contents[1]["parts"][0]["thoughtSignature"] == "SIG"
+    assert contents[1]["parts"][1]["thoughtSignature"] == "skip_thought_signature_validator"
     results = contents[2]["parts"]
     assert len(results) == 2 and results[0]["functionResponse"]["response"] == {"result": {"ok": True}}
     assert results[1]["functionResponse"]["response"] == {"result": "plain"}
@@ -234,3 +235,145 @@ def test_openai_and_ollama_wire_formats():
 def test_tool_spec_round_trips():
     t = ToolSpec(name="f", description="d", parameters={"type": "object", "properties": {}})
     assert LLMRequest(model="groq:x", messages=[], tools=[t]).tools[0].name == "f"
+
+
+def test_replay_finds_the_fallback_models_recording(tmp_path):
+    bad = FakeProvider("gemini", [ProviderError("400", status=400)])
+    good = FakeProvider("groq", [resp(content="from groq")])
+    gw, _ = make([bad, good], tmp_path)
+    run(gw.complete(req(), fallbacks=["groq:qwen/qwen3.8-27b"]))
+    replay, _ = make(
+        [FakeProvider("gemini", []), FakeProvider("groq", [])], tmp_path, cache_mode="replay_only"
+    )
+    r = run(replay.complete(req(), fallbacks=["groq:qwen/qwen3.8-27b"]))
+    assert r.cached and r.content == "from groq"
+
+
+def test_replay_raises_cache_miss_when_whole_chain_misses(tmp_path):
+    gw, _ = make([FakeProvider("gemini", []), FakeProvider("groq", [])], tmp_path, cache_mode="replay_only")
+    with pytest.raises(CacheMiss):
+        run(gw.complete(req(), fallbacks=["groq:qwen/qwen3.8-27b"]))
+
+
+def test_retry_limit_caps_retries_for_that_error():
+    p = FakeProvider(
+        "groq", [ProviderError("tool_use_failed", status=400, retryable=True, retry_limit=1)] * 5
+    )
+    gw, _ = make([p], max_retries=6)
+    with pytest.raises(ProviderError):
+        run(gw.complete(req("groq:qwen/qwen3.8-27b")))
+    assert p.calls == 2
+
+
+def test_invalid_cache_mode_is_rejected():
+    with pytest.raises(ValueError):
+        Gateway(providers={}, cache_mode="replay")
+
+
+def test_corrupt_cache_entry_is_a_miss(tmp_path):
+    cache = DiskCache(tmp_path)
+    key = request_key(req())
+    cache.put(key, resp())
+    path = tmp_path / key[:2] / f"{key}.json"
+    path.write_text("<<<<<<< HEAD\n{broken")
+    assert cache.get(key) is None
+
+
+def test_provider_fingerprint_changes_the_key():
+    assert request_key(req(), "", "thinking=low") != request_key(req(), "", "thinking=high")
+
+
+def test_rate_slot_is_taken_after_the_concurrency_slot():
+    """With concurrency 1 and slow calls, no 60 s window may hold more than rpm sends."""
+
+    class Slow:
+        name = "groq"
+
+        def __init__(self, clock):
+            self.clock = clock
+            self.sent: list[float] = []
+
+        async def complete(self, r):
+            self.sent.append(self.clock.t)
+            await self.clock.sleep(20)
+            return resp().model_copy(update={"model": r.model})
+
+    clock = FakeClock()
+    p = Slow(clock)
+    gw = Gateway(
+        providers={"groq": p},
+        sleep=clock.sleep,
+        clock=clock,
+        limits={"groq": RateLimit(rpm=2, concurrency=1)},
+    )
+
+    async def go():
+        await asyncio.gather(*(gw.complete(req("groq:qwen/qwen3.8-27b")) for _ in range(5)))
+
+    run(go())
+    for t in p.sent:
+        assert sum(1 for u in p.sent if t <= u < t + 60) <= 2
+
+
+def test_tpm_limit_waits():
+    p = FakeProvider("groq", [resp() for _ in range(2)])
+    gw, clock = make([p], limits={"groq": RateLimit(rpm=100, tpm=300)})
+    big = req("groq:qwen/qwen3.8-27b", text="x" * 800)  # ~200 + 256 estimated tokens
+    run(gw.complete(big))
+    run(gw.complete(big))
+    assert clock.sleeps and clock.sleeps[0] == pytest.approx(60.0)
+
+
+class _FakeHTTP:
+    """Stands in for httpx.AsyncClient.post with a canned response."""
+
+    def __init__(self, status, body, headers=None):
+        import httpx
+
+        self.resp = httpx.Response(
+            status,
+            content=body if isinstance(body, bytes) else body.encode(),
+            headers=headers or {},
+            request=httpx.Request("POST", "http://x"),
+        )
+
+    async def post(self, *a, **k):
+        return self.resp
+
+
+def _gemini(body, status=200):
+    return GeminiProvider("k", _FakeHTTP(status, body))  # type: ignore[arg-type]
+
+
+def test_non_json_200_is_a_retryable_provider_error():
+    with pytest.raises(ProviderError) as e:
+        run(_gemini("<html>oops</html>").complete(req("gemini:gemini-3.8-flash")))
+    assert e.value.retryable
+
+
+@pytest.mark.parametrize(
+    ("body", "retryable"),
+    [
+        ('{"promptFeedback": {"blockReason": "SAFETY"}}', False),
+        ('{"candidates": [{"finishReason": "SAFETY", "content": {"parts": []}}]}', False),
+        ('{"candidates": [{"finishReason": "MALFORMED_FUNCTION_CALL"}]}', True),
+    ],
+)
+def test_blocked_or_malformed_gemini_replies_raise(body, retryable):
+    with pytest.raises(ProviderError) as e:
+        run(_gemini(body).complete(req("gemini:gemini-3.8-flash")))
+    assert e.value.retryable is retryable
+
+
+def test_groq_reply_without_choices_raises():
+    from griddesk.gateway.providers import GroqProvider
+
+    p = GroqProvider("k", _FakeHTTP(200, '{"error": null}'))  # type: ignore[arg-type]
+    with pytest.raises(ProviderError):
+        run(p.complete(req("groq:qwen/qwen3.8-27b")))
+
+
+def test_unsigned_tool_calls_get_the_placeholder_signature():
+    msgs = [Message(role="assistant", tool_calls=[ToolCall(id="a", name="f", arguments={})])]
+    _, contents = GeminiProvider.to_contents(msgs)
+    assert contents[0]["parts"][0]["thoughtSignature"] == "skip_thought_signature_validator"
