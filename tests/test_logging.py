@@ -71,3 +71,8 @@ def test_cli_version():
 
     result = CliRunner().invoke(app, ["version"])
     assert result.exit_code == 0 and result.stdout.strip()
+
+
+def test_card_numbers_are_masked_only_when_luhn_valid():
+    assert regex_redact("card 4111 1111 1111 1111 ok") == "card <CARD> ok"
+    assert regex_redact("ref 1234567890123") == "ref 1234567890123"  # fails Luhn

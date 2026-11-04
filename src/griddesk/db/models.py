@@ -22,6 +22,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -156,6 +157,22 @@ class PaymentPlan(Base):
 
 class Credit(Base):
     __tablename__ = "credits"
+    __table_args__ = (
+        # Database backstops for P-12 (one credit per outage) and single use of an approval.
+        Index(
+            "uq_credit_outage",
+            "account_id",
+            "outage_id",
+            unique=True,
+            postgresql_where=text("outage_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_credit_approval",
+            "approval_request_id",
+            unique=True,
+            postgresql_where=text("approval_request_id IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(16), primary_key=True)
     account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), index=True)
@@ -165,6 +182,9 @@ class Credit(Base):
     note: Mapped[str | None] = mapped_column(String(240))
     applied_on: Mapped[date] = mapped_column(Date)
     approval_request_id: Mapped[str | None] = mapped_column(String(16))
+    bill_id: Mapped[str | None] = mapped_column(String(16))  # the bill a waiver or correction applies to
+    outage_id: Mapped[str | None] = mapped_column(String(16))  # the outage being compensated (P-12)
+    conversation_id: Mapped[str | None] = mapped_column(String(64), index=True)  # for the P-10 total
 
 
 class Outage(Base):
