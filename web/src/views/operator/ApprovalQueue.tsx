@@ -56,10 +56,13 @@ export function ApprovalQueue({ state, onDecided }: Props) {
         </span>
       }
       actions={
-        <label className="flex items-center gap-2 text-xs text-slate-500">
-          Operator
+        // A display name for the reply and audit note only. It is not a login: the backend
+        // must take the approver's identity from its own authentication, never from this field.
+        <label className="flex items-center gap-2 text-xs text-slate-500" title="Shown in the audit note. Not used for sign-in or authorization.">
+          Display name
           <input
             value={operator}
+            autoComplete="off"
             onChange={(e) => {
               setOperator(e.target.value);
               saveOperator(e.target.value);
