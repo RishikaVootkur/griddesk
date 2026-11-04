@@ -143,8 +143,12 @@ const httpApi: Api = {
       method: "POST",
       body: JSON.stringify({ decision, operator }),
     }),
-  listAudit: (outcome = "", limit = 200) =>
-    request(`/audit?limit=${limit}&outcome=${encodeURIComponent(outcome)}`),
+  listAudit(outcome = "", limit = 200) {
+    // Only send `outcome` when a filter is chosen: an empty value would match nothing.
+    const q = new URLSearchParams({ limit: String(limit) });
+    if (outcome) q.set("outcome", outcome);
+    return request(`/audit?${q.toString()}`);
+  },
   listRuns: () => request("/eval/runs"),
   getRun: (name) => request(`/eval/runs/${encodeURIComponent(name)}`),
 };
