@@ -29,7 +29,7 @@ from griddesk.gateway.types import (
     ProviderError,
 )
 
-DEFAULT_CHAIN = ["gemini:gemini-3.8-flash", "groq:qwen/qwen3.8-27b", "ollama:qwen3:8b"]
+DEFAULT_CHAIN = ["gemini:gemini-3.5-flash-lite", "groq:qwen/qwen3.8-27b", "ollama:qwen3:8b"]
 
 
 @dataclass(frozen=True)
@@ -41,7 +41,7 @@ class RateLimit:
 
 # Sized a little under the observed free-tier limits (see PROGRESS.md).
 DEFAULT_LIMITS: dict[str, RateLimit] = {
-    "gemini": RateLimit(rpm=12, tpm=200_000, concurrency=4),
+    "gemini": RateLimit(rpm=9, tpm=200_000, concurrency=3),  # flash-lite free tier: 10 RPM
     "groq": RateLimit(rpm=28, tpm=7_500, concurrency=2),
     "ollama": RateLimit(rpm=1_000, concurrency=1),
 }
