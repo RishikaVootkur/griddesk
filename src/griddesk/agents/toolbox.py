@@ -146,7 +146,8 @@ class Toolbox:
         if result.is_error or result.structured_content is None:
             text = " ".join(getattr(c, "text", "") for c in result.content)[:300]
             return {"ok": False, "error": {"code": "invalid_request", "message": text or "execution failed"}}
-        return result.structured_content
+        out: dict[str, Any] = result.structured_content
+        return out
 
     def record_handoff(
         self, conversation_id: str, source: str, target: str, arguments: dict[str, Any]
