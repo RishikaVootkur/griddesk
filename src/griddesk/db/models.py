@@ -165,6 +165,9 @@ class Credit(Base):
     note: Mapped[str | None] = mapped_column(String(240))
     applied_on: Mapped[date] = mapped_column(Date)
     approval_request_id: Mapped[str | None] = mapped_column(String(16))
+    bill_id: Mapped[str | None] = mapped_column(String(16))  # the bill a waiver or correction applies to
+    outage_id: Mapped[str | None] = mapped_column(String(16))  # the outage being compensated (P-12)
+    conversation_id: Mapped[str | None] = mapped_column(String(64), index=True)  # for the P-10 total
 
 
 class Outage(Base):

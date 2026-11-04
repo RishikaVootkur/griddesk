@@ -275,6 +275,9 @@ def _bills_for_account(
                     "note": f"Courtesy waiver of late fee on {bid}",
                     "applied_on": issued + timedelta(days=3),
                     "approval_request_id": None,
+                    "bill_id": bid,
+                    "outage_id": None,
+                    "conversation_id": None,
                 }
             )
         if status == "paid":
