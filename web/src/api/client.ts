@@ -174,7 +174,14 @@ const staticApi: Api = {
   },
 };
 
-export const api: Api = STATIC_MODE ? staticApi : MOCK_MODE ? mockApi(loadStaticData) : httpApi;
+/** Mock mode only: the sample is bundled as its own chunk, never part of the normal build. */
+// The MODE check is written inline so the bundler can drop the import in other builds.
+const loadMockData = (): Promise<StaticEvalData> =>
+  import.meta.env.MODE === "mock"
+    ? import("../../sample/eval-data.sample.json").then((m) => m.default as unknown as StaticEvalData)
+    : Promise.reject(new ApiError(500, "Mock data is only available in mock mode."));
+
+export const api: Api = STATIC_MODE ? staticApi : MOCK_MODE ? mockApi(loadMockData) : httpApi;
 
 export function describeError(err: unknown): string {
   if (err instanceof ApiError) return err.message;
