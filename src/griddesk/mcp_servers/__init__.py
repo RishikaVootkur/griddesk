@@ -12,6 +12,7 @@ ServerFactory = Callable[[ToolContext], MCPServer]
 
 
 def server_factories() -> dict[str, ServerFactory]:
+    from griddesk.mcp_servers.accounts import build_accounts_server
     from griddesk.mcp_servers.billing import build_billing_server
 
-    return {"billing": build_billing_server}
+    return {"billing": build_billing_server, "accounts": build_accounts_server}
