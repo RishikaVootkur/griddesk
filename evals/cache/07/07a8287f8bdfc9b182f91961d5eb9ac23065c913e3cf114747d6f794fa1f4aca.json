@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Account number is 102721, and the last name is Smith.",
+ "usage": {
+  "input_tokens": 530,
+  "output_tokens": 34
+ },
+ "latency_ms": 634.0,
+ "cost_usd": 0.0000999
+}

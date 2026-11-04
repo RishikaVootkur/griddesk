@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your 4-month payment plan has been successfully set up! Your first payment is due on the 15th of next month, and the remaining three payments will be due on the 15th of each subsequent month. If you have any questions, feel free to reach out. Have a great day!",
+ "usage": {
+  "input_tokens": 2132,
+  "output_tokens": 64
+ },
+ "latency_ms": 9114.8
+}

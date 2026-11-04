@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I’d like to set up a payment plan of six monthly installments.",
+ "usage": {
+  "input_tokens": 646,
+  "output_tokens": 30
+ },
+ "latency_ms": 364.4,
+ "cost_usd": 0.00011489999999999999
+}

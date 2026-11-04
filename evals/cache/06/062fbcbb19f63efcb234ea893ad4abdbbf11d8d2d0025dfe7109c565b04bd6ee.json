@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I'm not sure of the exact amount; it just shows a late fee on the bill.",
+ "usage": {
+  "input_tokens": 749,
+  "output_tokens": 37
+ },
+ "latency_ms": 744.2,
+ "cost_usd": 0.00013455
+}

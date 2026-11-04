@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "The duplicate monthly customer charge on your bill (B-102721-2610) has been corrected, and a credit of $23.00 has been applied. Your new balance is $213.01. If you have any further questions, feel free to ask!",
+ "usage": {
+  "input_tokens": 3023,
+  "output_tokens": 66
+ },
+ "latency_ms": 14102.3
+}

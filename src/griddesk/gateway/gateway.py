@@ -19,7 +19,7 @@ from typing import get_args
 
 from griddesk.gateway.cache import DiskCache, request_key
 from griddesk.gateway.pricing import list_price_cost
-from griddesk.gateway.providers import Provider
+from griddesk.gateway.providers import FINGERPRINTS, Provider
 from griddesk.gateway.types import (
     BudgetExceeded,
     CacheMiss,
@@ -29,7 +29,7 @@ from griddesk.gateway.types import (
     ProviderError,
 )
 
-DEFAULT_CHAIN = ["gemini:gemini-3.8-flash", "groq:qwen/qwen3.8-27b", "ollama:qwen3:8b"]
+DEFAULT_CHAIN = ["gemini:gemini-3.5-flash-lite", "groq:qwen/qwen3.8-27b", "ollama:qwen3:8b"]
 
 
 @dataclass(frozen=True)
@@ -41,7 +41,7 @@ class RateLimit:
 
 # Sized a little under the observed free-tier limits (see PROGRESS.md).
 DEFAULT_LIMITS: dict[str, RateLimit] = {
-    "gemini": RateLimit(rpm=12, tpm=200_000, concurrency=4),
+    "gemini": RateLimit(rpm=9, tpm=200_000, concurrency=3),  # flash-lite free tier: 10 RPM
     "groq": RateLimit(rpm=28, tpm=7_500, concurrency=2),
     "ollama": RateLimit(rpm=1_000, concurrency=1),
 }
@@ -150,12 +150,14 @@ class Gateway:
             )
         chain = [req.model, *(fallbacks or [])]
         last_error: Exception | None = None
+        misses: list[str] = []
         for model in chain:
             attempt_req = req if model == req.model else req.model_copy(update={"model": model})
             try:
                 resp = await self._complete_one(attempt_req, namespace)
             except CacheMiss as e:
                 # In replay a fallback model may hold the recorded answer; keep walking the chain.
+                misses.append(str(e))
                 last_error = e
                 continue
             except ProviderError as e:
@@ -169,11 +171,14 @@ class Gateway:
             self._record(conversation_id, req.model, attempt_req, resp)
             return resp
         assert last_error is not None
+        if misses and len(misses) == len(chain):
+            raise CacheMiss("; ".join(misses))
         raise last_error
 
     async def _complete_one(self, req: LLMRequest, namespace: str) -> LLMResponse:
         provider = self.providers.get(req.provider)
-        key = request_key(req, namespace, getattr(provider, "fingerprint", ""))
+        fingerprint = getattr(provider, "fingerprint", None) or FINGERPRINTS.get(req.provider, "")
+        key = request_key(req, namespace, fingerprint)
         if self.cache and self.cache_mode != "off":
             hit = self.cache.get(key)
             if hit is not None:

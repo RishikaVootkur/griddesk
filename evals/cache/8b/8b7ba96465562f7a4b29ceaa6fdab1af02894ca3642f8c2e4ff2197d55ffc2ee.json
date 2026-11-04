@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I apologize for the confusion. To correct the duplicate charge, I need to specify the bill it applies to. The credit will be applied to the correct bill, and the duplicate charge will be removed. One moment please.",
+ "usage": {
+  "input_tokens": 2668,
+  "output_tokens": 45
+ },
+ "latency_ms": 9754.2
+}

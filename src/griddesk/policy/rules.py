@@ -159,9 +159,17 @@ def check_credit(f: CreditFacts, today: date) -> Decision:
                 "P-08", f"A late fee was already waived on {f.last_late_fee_waiver_on}; once per 12 months."
             )
     if f.reason_code == "outage_compensation":
+        open_ids = [o for o in f.qualifying_outage_ids if o not in f.outage_ids_already_compensated]
         if f.outage_id is None or f.outage_id not in f.qualifying_outage_ids:
+            # Actionable refusal: name the qualifying outages so the agent can retry correctly.
+            hint = (
+                f" Qualifying outages at this address: {', '.join(open_ids)}."
+                if open_ids
+                else " No outage at this address qualifies."
+            )
+            what = "No outage_id given." if f.outage_id is None else "That outage does not qualify."
             return deny(
-                "P-12", "That outage did not last over 24 hours or was not restored in the last 30 days."
+                "P-12", f"{what}{hint} (Must last over 24 hours and be restored in the last 30 days.)"
             )
         if f.outage_id in f.outage_ids_already_compensated:
             return deny("P-12", "This outage was already compensated.")

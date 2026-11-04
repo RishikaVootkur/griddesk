@@ -25,3 +25,6 @@ web/dist/
 *.sqlite
 *.db
 .DS_Store
+
+# Agent worktrees
+.claude/worktrees/

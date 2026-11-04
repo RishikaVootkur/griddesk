@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I need to verify your identity first to proceed. Could you please provide your date of birth or the last four digits of your Social Security Number?",
+ "usage": {
+  "input_tokens": 2088,
+  "output_tokens": 30
+ },
+ "latency_ms": 3902.5
+}

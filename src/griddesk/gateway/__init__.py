@@ -48,9 +48,9 @@ def build_gateway(
     s = settings or get_settings()
     client = httpx.AsyncClient(timeout=httpx.Timeout(180.0, connect=10.0))
     providers: dict[str, Provider] = {"ollama": OllamaProvider(s.ollama_base_url, client)}
-    if s.gemini_api_key:
+    if s.gemini_api_key and s.gemini_api_key.get_secret_value():
         providers["gemini"] = GeminiProvider(s.gemini_api_key.get_secret_value(), client)
-    if s.groq_api_key:
+    if s.groq_api_key and s.groq_api_key.get_secret_value():
         providers["groq"] = GroqProvider(s.groq_api_key.get_secret_value(), client)
     return Gateway(
         providers=providers,
