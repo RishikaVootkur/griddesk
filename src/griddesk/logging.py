@@ -22,7 +22,27 @@ _PHONE = re.compile(r"(?:\+1[-.\s]?)?(?:\(\d{3}\)\s?|\b\d{3}[-.\s])\d{3}[-.\s]\d
 _SSN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b|\b(?:ssn|social security)\D{0,12}\d{9}\b", re.IGNORECASE)
 
 
+_CARD = re.compile(r"\b\d(?:[ -]?\d){12,18}\b")
+
+
+def _luhn_ok(digits: str) -> bool:
+    total, alt = 0, False
+    for ch in reversed(digits):
+        d = int(ch)
+        if alt:
+            d = d * 2 - 9 if d > 4 else d * 2
+        total += d
+        alt = not alt
+    return total % 10 == 0
+
+
+def _mask_card(m: re.Match[str]) -> str:
+    digits = re.sub(r"\D", "", m.group(0))
+    return "<CARD>" if 13 <= len(digits) <= 19 and _luhn_ok(digits) else m.group(0)
+
+
 def regex_redact(text: str) -> str:
+    text = _CARD.sub(_mask_card, text)
     text = _SSN.sub("<SSN>", text)
     text = _EMAIL.sub("<EMAIL>", text)
     return _PHONE.sub("<PHONE>", text)
