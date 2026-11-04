@@ -379,18 +379,25 @@ def _prev_month(d: date, day: int) -> date:
     return date(y, mo, day)
 
 
+# Outage ids are stable; feeders are the busiest ones in this seed so every outage reaches customers.
+OUTAGE_SPECS = [
+    # id, status, cause, start (hours from now), restoration (hours from now)
+    ("OUT-2610-01", "active", "Storm damage: tree on line", -3, 4),
+    ("OUT-2610-02", "active", "Equipment failure: substation transformer", -1, None),
+    ("OUT-2610-03", "active", "Planned maintenance", -2, 2),
+    ("OUT-2610-04", "restored", "Vehicle hit utility pole", -26, -20),  # 6 h: no compensation
+    ("OUT-2610-05", "restored", "Storm damage: multiple lines down", -80, -48),  # 32 h: qualifies (P-12)
+]
+
+
 def _outages(rng: random.Random, out: dict[str, list[Row]]) -> None:
+    active_addr = {a["service_address_id"] for a in out["accounts"] if a["status"] != "closed"}
     feeder_counts: dict[str, int] = defaultdict(int)
     for a in out["service_addresses"]:
-        feeder_counts[a["feeder"]] += 1
-    specs = [
-        ("OUT-2610-07", "F07", "active", "Storm damage: tree on line", -3, 4),
-        ("OUT-2610-15", "F15", "active", "Equipment failure: substation transformer", -1, None),
-        ("OUT-2610-19", "F19", "active", "Planned maintenance", -2, 2),
-        ("OUT-2610-03", "F03", "restored", "Vehicle hit utility pole", -26, -20),
-        ("OUT-2610-11", "F11", "restored", "Storm damage: multiple lines down", -80, -48),
-    ]
-    for oid, feeder, status, cause, start_h, etr_h in specs:
+        if a["id"] in active_addr:
+            feeder_counts[a["feeder"]] += 1
+    busiest = sorted(feeder_counts, key=lambda f: (-feeder_counts[f], f))
+    for (oid, status, cause, start_h, etr_h), feeder in zip(OUTAGE_SPECS, busiest, strict=False):
         started = SIM_NOW + timedelta(hours=start_h)
         etr = SIM_NOW + timedelta(hours=etr_h) if etr_h is not None else None
         out["outages"].append(
