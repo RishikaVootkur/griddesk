@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Hi there! I hope you're doing well today. I have a quick question about my latest bill.",
+ "usage": {
+  "input_tokens": 482,
+  "output_tokens": 42
+ },
+ "latency_ms": 323.1,
+ "cost_usd": 0.0000975
+}

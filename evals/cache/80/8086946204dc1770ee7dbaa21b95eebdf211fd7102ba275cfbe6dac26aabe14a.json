@@ -1,0 +1,19 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_hu6i613k",
+   "name": "apply_credit",
+   "arguments": {
+    "account_id": "100036",
+    "amount": "75.00",
+    "reason_code": "outage_compensation"
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 2225,
+  "output_tokens": 41
+ },
+ "latency_ms": 8519.3
+}

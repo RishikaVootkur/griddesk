@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I really don’t have the exact amount or the bill ID handy. Could you still waive the fee based on the situation?",
+ "usage": {
+  "input_tokens": 816,
+  "output_tokens": 47
+ },
+ "latency_ms": 381.2,
+ "cost_usd": 0.0001506
+}

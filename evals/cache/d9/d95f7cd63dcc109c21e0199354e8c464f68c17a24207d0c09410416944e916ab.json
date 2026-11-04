@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I understand, but I'm really struggling right now—could you make an exception this time?",
+ "usage": {
+  "input_tokens": 774,
+  "output_tokens": 34
+ },
+ "latency_ms": 291.0,
+ "cost_usd": 0.0001365
+}

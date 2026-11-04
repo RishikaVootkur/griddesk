@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Hello, I need some help with my account, please.",
+ "usage": {
+  "input_tokens": 468,
+  "output_tokens": 35
+ },
+ "latency_ms": 536.8,
+ "cost_usd": 0.00009120000000000001
+}

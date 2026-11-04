@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Hi there! I was looking at my latest bill and noticed the monthly customer charge appears twice. Could you help me sort that out?",
+ "usage": {
+  "input_tokens": 485,
+  "output_tokens": 46
+ },
+ "latency_ms": 413.9,
+ "cost_usd": 0.00010035
+}
