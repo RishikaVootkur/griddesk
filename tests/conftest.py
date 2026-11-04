@@ -35,6 +35,13 @@ def engine():
     except Exception:
         pytest.skip("Postgres not reachable; start it with `docker compose up -d postgres`")
     url = test_url.render_as_string(hide_password=False)
+    # Rebuild the test schema from scratch so tests never depend on what another branch left behind.
+    assert test_url.database and test_url.database.endswith("_test")
+    reset = create_engine(url, isolation_level="AUTOCOMMIT")
+    with reset.connect() as c:
+        c.execute(text("drop schema public cascade"))
+        c.execute(text("create schema public"))
+    reset.dispose()
     cfg = Config(str(REPO_ROOT / "alembic.ini"))
     cfg.attributes["url"] = url
     command.upgrade(cfg, "head")

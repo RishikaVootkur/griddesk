@@ -14,7 +14,7 @@ def run(success, violation, errors=0, outcomes=None):
             "pass^1": success,
         },
         "trials": [
-            {"task_id": k, "success": v, "error": "CacheMiss: x" if errors else None}
+            {"task_id": k, "trial": 0, "success": v, "error": "CacheMiss: x" if errors else None}
             for k, v in outcomes.items()
         ],
     }
@@ -48,4 +48,10 @@ def test_gate_lists_tasks_whose_outcome_changed():
         run(0.5, 0.0, outcomes={"a": True, "b": False}),
         Thresholds(),
     )
-    assert "`a`: pass -> fail" in r.markdown and "`b`: fail -> pass" in r.markdown
+    assert "`a t0`: pass -> fail" in r.markdown and "`b t0`: fail -> pass" in r.markdown
+
+
+def test_gate_fails_when_the_slice_changes():
+    smaller = run(1.0, 0.0, outcomes={"a": True})
+    r = evaluate(smaller, run(0.5, 0.0), Thresholds())
+    assert not r.passed and "same tasks" in r.markdown
