@@ -484,6 +484,26 @@ TEMPLATES: list[Template] = [
 ]
 
 
+def suites() -> dict[str, list[Template]]:
+    """Output file (relative to the repo root) -> the templates that build it."""
+    from griddesk.eval import taskgen_accounts, taskgen_attacks, taskgen_mixed, taskgen_outages
+
+    return {
+        "evals/tasks/billing.yaml": TEMPLATES,
+        "evals/tasks/outages.yaml": taskgen_outages.TEMPLATES,
+        "evals/tasks/accounts.yaml": taskgen_accounts.TEMPLATES,
+        "evals/tasks/mixed.yaml": taskgen_mixed.TEMPLATES,
+        "evals/adversarial/attacks.yaml": taskgen_attacks.TEMPLATES,
+    }
+
+
+def __getattr__(name: str) -> Any:
+    # SUITES is built lazily: the suite modules import helpers from this one.
+    if name == "SUITES":
+        return suites()
+    raise AttributeError(name)
+
+
 def build(s: Session, templates: list[Template] | None = None) -> list[dict[str, Any]]:
     tasks = [t for tmpl in (templates or TEMPLATES) for t in tmpl(s)]
     for t in tasks:
