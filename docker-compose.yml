@@ -1,5 +1,19 @@
 name: griddesk
 
+# Lean on purpose: the host also runs Ollama on a 16 GB Mac. Memory limits keep the stack near 3 GB.
+x-app: &app
+  build: .
+  image: griddesk-app:local
+  env_file: [.env]
+  environment: &app-env
+    DATABASE_URL: postgresql+psycopg://griddesk:griddesk@postgres:5432/griddesk
+    OLLAMA_BASE_URL: http://host.docker.internal:11434
+    GRIDDESK_MCP_PRIVATE_NET: "1"
+  extra_hosts: ["host.docker.internal:host-gateway"]
+  depends_on:
+    postgres: {condition: service_healthy}
+  restart: unless-stopped
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -9,15 +23,77 @@ services:
       POSTGRES_DB: griddesk
     ports: ["5433:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
-    command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=60"]
+    command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=100"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U griddesk"]
       interval: 3s
       timeout: 3s
       retries: 20
-    deploy:
-      resources:
-        limits: {memory: 512m}
+    deploy: {resources: {limits: {memory: 512m}}}
+
+  phoenix:
+    image: arizephoenix/phoenix:version-21.0.0
+    ports: ["6006:6006"]
+    volumes: [phoenix:/mnt/data]
+    environment:
+      PHOENIX_WORKING_DIR: /mnt/data
+    deploy: {resources: {limits: {memory: 1g}}}
+
+  migrate:
+    <<: *app
+    command: ["sh", "-c", "alembic upgrade head && griddesk db seed --if-empty"]
+    restart: "no"
+
+  mcp-billing:
+    <<: *app
+    command: ["python", "-m", "griddesk.mcp_servers", "billing", "--host", "0.0.0.0", "--port", "8101"]
+    depends_on: {migrate: {condition: service_completed_successfully}}
+    deploy: {resources: {limits: {memory: 256m}}}
+
+  mcp-outages:
+    <<: *app
+    command: ["python", "-m", "griddesk.mcp_servers", "outages", "--host", "0.0.0.0", "--port", "8102"]
+    depends_on: {migrate: {condition: service_completed_successfully}}
+    deploy: {resources: {limits: {memory: 256m}}}
+
+  mcp-accounts:
+    <<: *app
+    command: ["python", "-m", "griddesk.mcp_servers", "accounts", "--host", "0.0.0.0", "--port", "8103"]
+    depends_on: {migrate: {condition: service_completed_successfully}}
+    deploy: {resources: {limits: {memory: 256m}}}
+
+  mcp-knowledge:
+    <<: *app
+    command: ["python", "-m", "griddesk.mcp_servers", "knowledge", "--host", "0.0.0.0", "--port", "8104"]
+    depends_on: {migrate: {condition: service_completed_successfully}}
+    deploy: {resources: {limits: {memory: 256m}}}
+
+  api:
+    <<: *app
+    environment:
+      <<: *app-env
+      TRACING_ENABLED: "true"
+      PHOENIX_COLLECTOR_ENDPOINT: http://phoenix:6006/v1/traces
+      MCP_BILLING_URL: http://mcp-billing:8101/mcp
+      MCP_OUTAGES_URL: http://mcp-outages:8102/mcp
+      MCP_ACCOUNTS_URL: http://mcp-accounts:8103/mcp
+      MCP_KNOWLEDGE_URL: http://mcp-knowledge:8104/mcp
+    ports: ["8000:8000"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      mcp-billing: {condition: service_started}
+      mcp-outages: {condition: service_started}
+      mcp-accounts: {condition: service_started}
+      mcp-knowledge: {condition: service_started}
+      phoenix: {condition: service_started}
+    deploy: {resources: {limits: {memory: 1g}}}
+
+  web:
+    build: ./web
+    ports: ["5173:80"]
+    depends_on: [api]
+    deploy: {resources: {limits: {memory: 128m}}}
 
 volumes:
   pgdata:
+  phoenix:

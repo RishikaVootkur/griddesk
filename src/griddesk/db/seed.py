@@ -443,7 +443,7 @@ TABLE_ORDER = [
 ]
 
 
-LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "postgres"}
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "postgres"}  # "postgres" = the compose service
 
 
 def load(engine: Engine, data: dict[str, list[Row]], force: bool = False) -> dict[str, int]:

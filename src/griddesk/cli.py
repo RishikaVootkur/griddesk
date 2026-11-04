@@ -39,10 +39,19 @@ app.add_typer(db_app, name="db")
 def db_seed(
     seed: int = typer.Option(20261015, help="Random seed for the generator."),
     force: bool = typer.Option(False, "--force", help="Allow reseeding a non-local database host."),
+    if_empty: bool = typer.Option(False, "--if-empty", help="Only seed when there are no customers yet."),
 ) -> None:
     """Replace the local database contents with freshly generated synthetic data."""
+    from sqlalchemy import text
+
     from griddesk.db.seed import generate, load
     from griddesk.db.session import get_engine
+
+    if if_empty:
+        with get_engine().connect() as c:
+            if c.execute(text("select count(*) from customers")).scalar():
+                typer.echo("database already seeded; skipping")
+                return
 
     counts = load(get_engine(), generate(seed), force=force)
     for table, n in counts.items():
