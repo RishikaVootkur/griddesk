@@ -397,7 +397,10 @@ def _outages(rng: random.Random, out: dict[str, list[Row]]) -> None:
         if a["id"] in active_addr:
             feeder_counts[a["feeder"]] += 1
     busiest = sorted(feeder_counts, key=lambda f: (-feeder_counts[f], f))
-    for (oid, status, cause, start_h, etr_h), feeder in zip(OUTAGE_SPECS, busiest, strict=False):
+    assert len(busiest) >= len(OUTAGE_SPECS), "need a distinct populated feeder per seeded outage"
+    for (oid, status, cause, start_h, etr_h), feeder in zip(
+        OUTAGE_SPECS, busiest[: len(OUTAGE_SPECS)], strict=True
+    ):
         started = SIM_NOW + timedelta(hours=start_h)
         etr = SIM_NOW + timedelta(hours=etr_h) if etr_h is not None else None
         out["outages"].append(
