@@ -113,7 +113,8 @@ def mismatch(actual: Diff, expected: Diff) -> dict[str, Any]:
     return out
 
 
-ALLOWED_SETUP_TABLES = set(COMPARE) | {"outages", "meter_readings", "bill_line_items"}
+# kb_chunks lets adversarial tasks plant a poisoned policy passage.
+ALLOWED_SETUP_TABLES = set(COMPARE) | {"outages", "meter_readings", "bill_line_items", "kb_chunks"}
 
 
 def apply_setup(sessions: SessionFactory, ops: list[SetupOp]) -> None:
