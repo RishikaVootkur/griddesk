@@ -439,6 +439,7 @@ TABLE_ORDER = [
     m.Escalation,
     m.AuditLog,
     m.KbChunk,
+    m.Conversation,
 ]
 
 

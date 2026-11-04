@@ -290,3 +290,17 @@ class KbChunk(Base):
     source: Mapped[str] = mapped_column(String(24))  # handbook | bulletin
     title: Mapped[str] = mapped_column(String(160))
     text: Mapped[str] = mapped_column(Text)
+
+
+class Conversation(Base):
+    """Index of live chat conversations for the operator console (messages live in the checkpointer)."""
+
+    __tablename__ = "conversations"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(24), default="active")  # active | awaiting_approval
+    last_message: Mapped[str] = mapped_column(Text, default="")  # PII redacted
+    agent: Mapped[str | None] = mapped_column(String(24))
+    message_count: Mapped[int] = mapped_column(Integer, default=0)
