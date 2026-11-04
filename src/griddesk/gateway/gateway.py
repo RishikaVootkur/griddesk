@@ -43,7 +43,7 @@ class RateLimit:
 DEFAULT_LIMITS: dict[str, RateLimit] = {
     "gemini": RateLimit(rpm=9, tpm=200_000, concurrency=3),  # flash-lite free tier: 10 RPM
     "groq": RateLimit(rpm=28, tpm=7_500, concurrency=2),
-    "ollama": RateLimit(rpm=1_000, concurrency=1),
+    "ollama": RateLimit(rpm=1_000, concurrency=3),  # Ollama batches parallel requests
 }
 
 
