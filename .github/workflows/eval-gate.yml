@@ -1,0 +1,51 @@
+name: eval-gate
+
+# Replays a fixed task slice from the committed response cache. Deterministic, free, and needs no
+# API keys: any cache miss (a changed prompt, tool or task) fails the gate until it is re-recorded.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: eval-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: griddesk
+          POSTGRES_PASSWORD: griddesk
+          POSTGRES_DB: griddesk
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U griddesk" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://griddesk:griddesk@localhost:5433/griddesk
+      CACHE_MODE: replay_only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Migrate and seed
+        run: uv run alembic upgrade head && uv run griddesk db seed
+      - name: Replay the slice and compare with the baseline
+        id: gate
+        run: uv run griddesk eval gate --markdown gate.md
+        continue-on-error: true
+      - name: Post the metric diff on the PR
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        with:
+          header: eval-gate
+          path: gate.md
+      - name: Fail if the gate failed
+        if: steps.gate.outcome == 'failure'
+        run: exit 1

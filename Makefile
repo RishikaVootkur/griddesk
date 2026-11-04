@@ -1,4 +1,4 @@
-.PHONY: setup lint test up down migrate seed
+.PHONY: setup lint test up down migrate seed eval eval-gate eval-record
 
 setup:  ## Install Python and web dependencies and git hooks
 	uv sync
@@ -24,3 +24,12 @@ migrate: up
 
 seed: migrate  ## Reset the LOCAL dev database to the deterministic synthetic seed
 	uv run griddesk db seed
+
+eval:  ## Run the full task suite on the default model (writes evals/runs/)
+	uv run griddesk eval run --model gemini:gemini-3.5-flash-lite --suite tasks --trials 4
+
+eval-gate:  ## Replay the CI slice from the committed cache and compare with the baseline
+	uv run griddesk eval gate
+
+eval-record:  ## Re-record the CI slice live into evals/cache and rewrite the baseline
+	uv run griddesk eval gate --record

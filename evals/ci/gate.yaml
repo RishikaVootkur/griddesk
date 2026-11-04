@@ -1,0 +1,11 @@
+# CI regression gate: a fixed slice replayed from the committed response cache (evals/cache).
+# Re-record with `make eval-record` after changing prompts, tools or tasks in the slice.
+model: gemini:gemini-3.5-flash-lite
+suite: tasks
+trials: 1
+baseline: evals/baselines/ci-gate.json
+tasks: []   # empty = every task in the suite
+thresholds:
+  max_success_drop: 0.05      # fail if success rate falls more than 5 points below the baseline
+  max_violation_rise: 0.0     # fail on any rise in the policy-violation rate
+  max_errors: 0               # cache misses and crashes fail the gate
