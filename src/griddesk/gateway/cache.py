@@ -15,12 +15,25 @@ import os
 import tempfile
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from griddesk.gateway.types import LLMRequest, LLMResponse
 
+# Bump when the gateway's own wire mapping changes in a way that alters model output.
+CACHE_VERSION = 1
 
-def request_key(req: LLMRequest, namespace: str = "") -> str:
+
+def request_key(req: LLMRequest, namespace: str = "", provider_fingerprint: str = "") -> str:
+    """Hash of the full request, the namespace, and the provider settings that shape the output."""
     payload = json.dumps(
-        {"ns": namespace, "req": req.model_dump(mode="json")}, sort_keys=True, separators=(",", ":")
+        {
+            "v": CACHE_VERSION,
+            "ns": namespace,
+            "provider": provider_fingerprint,
+            "req": req.model_dump(mode="json"),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
     )
     return hashlib.sha256(payload.encode()).hexdigest()
 
@@ -36,7 +49,10 @@ class DiskCache:
         p = self._path(key)
         if not p.exists():
             return None
-        return LLMResponse.model_validate_json(p.read_text())
+        try:
+            return LLMResponse.model_validate_json(p.read_text())
+        except (ValidationError, OSError, UnicodeDecodeError):
+            return None  # a corrupt or conflicted entry is a miss; the next write replaces it
 
     def put(self, key: str, resp: LLMResponse) -> None:
         p = self._path(key)
@@ -44,6 +60,10 @@ class DiskCache:
         data = resp.model_copy(update={"cached": False}).model_dump_json(indent=1, exclude_defaults=True)
         # Atomic write so concurrent trials never read a half-written entry.
         fd, tmp = tempfile.mkstemp(dir=p.parent, suffix=".tmp")
-        with os.fdopen(fd, "w") as f:
-            f.write(data + "\n")
-        os.replace(tmp, p)
+        try:
+            with os.fdopen(fd, "w") as f:
+                f.write(data + "\n")
+            os.replace(tmp, p)
+        except BaseException:
+            Path(tmp).unlink(missing_ok=True)
+            raise

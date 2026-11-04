@@ -53,14 +53,34 @@ async def _post(client: httpx.AsyncClient, url: str, body: dict[str, Any], heade
         if retry_after is None:
             m = re.search(r'"retryDelay":\s*"([\d.]+s)"', r.text)
             retry_after = _parse_retry_after(m.group(1)) if m else None
-        retryable = r.status_code in RETRYABLE_STATUS or "tool_use_failed" in detail
+        tool_use_failed = "tool_use_failed" in detail
         raise ProviderError(
             f"HTTP {r.status_code}: {detail}",
             status=r.status_code,
-            retryable=retryable,
+            retryable=r.status_code in RETRYABLE_STATUS or tool_use_failed,
             retry_after=retry_after,
+            # A malformed tool call usually repeats at temperature 0: one more try, then fall back.
+            retry_limit=1 if tool_use_failed else None,
         )
-    return r.json()
+    try:
+        return r.json()
+    except ValueError:
+        raise ProviderError("HTTP 200 with a non-JSON body", status=200, retryable=True) from None
+
+
+# Gemini 3 rejects a function call without a thought signature. Calls made by another model
+# (after a fallback) have none, so they carry this documented placeholder instead.
+SKIP_SIGNATURE = "skip_thought_signature_validator"
+GEMINI_BAD_FINISH = {
+    "SAFETY",
+    "RECITATION",
+    "BLOCKLIST",
+    "PROHIBITED_CONTENT",
+    "SPII",
+    "MALFORMED_FUNCTION_CALL",
+    "UNEXPECTED_TOOL_CALL",
+    "OTHER",
+}
 
 
 class GeminiProvider:
@@ -71,6 +91,10 @@ class GeminiProvider:
         self._key = api_key
         self._client = client
         self._thinking = thinking_level
+        self.fingerprint = f"gemini/v1 thinking={thinking_level}"
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
 
     @staticmethod
     def to_contents(messages: list[Message]) -> tuple[str, list[dict[str, Any]]]:
@@ -93,8 +117,7 @@ class GeminiProvider:
                     fc: dict[str, Any] = {
                         "functionCall": {"name": tc.name, "args": tc.arguments, "id": tc.id}
                     }
-                    if tc.signature:
-                        fc["thoughtSignature"] = tc.signature
+                    fc["thoughtSignature"] = tc.signature or SKIP_SIGNATURE
                     parts.append(fc)
                 if not parts:
                     parts = [{"text": ""}]
@@ -139,7 +162,18 @@ class GeminiProvider:
             self._client, f"{self.BASE}/{req.model_name}:generateContent", body, {"x-goog-api-key": self._key}
         )
         cands = data.get("candidates") or []
-        parts = (cands[0].get("content") or {}).get("parts", []) if cands else []
+        if not cands:
+            reason = (data.get("promptFeedback") or {}).get("blockReason", "no candidates")
+            raise ProviderError(f"Gemini returned no candidates ({reason})", status=200)
+        finish = cands[0].get("finishReason", "STOP")
+        if finish in GEMINI_BAD_FINISH:
+            raise ProviderError(
+                f"Gemini stopped with {finish}",
+                status=200,
+                retryable=finish == "MALFORMED_FUNCTION_CALL",
+                retry_limit=1,
+            )
+        parts = (cands[0].get("content") or {}).get("parts", [])
         text, calls, sig = [], [], None
         for i, p in enumerate(parts):
             if p.get("thought"):
@@ -209,6 +243,10 @@ class GroqProvider:
     def __init__(self, api_key: str, client: httpx.AsyncClient) -> None:
         self._key = api_key
         self._client = client
+        self.fingerprint = "groq/v1 reasoning=qwen:none,gpt-oss:low"
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
 
     async def complete(self, req: LLMRequest) -> LLMResponse:
         body: dict[str, Any] = {
@@ -226,7 +264,10 @@ class GroqProvider:
         if req.json_mode:
             body["response_format"] = {"type": "json_object"}
         data = await _post(self._client, self.URL, body, {"Authorization": f"Bearer {self._key}"})
-        msg = data["choices"][0]["message"]
+        choices = data.get("choices") if isinstance(data, dict) else None
+        if not choices or "message" not in choices[0]:
+            raise ProviderError("Groq reply has no choices", status=200, retryable=True, retry_limit=2)
+        msg = choices[0]["message"]
         calls = [
             ToolCall(
                 id=tc["id"],
@@ -251,6 +292,10 @@ class OllamaProvider:
         self._url = base_url.rstrip("/") + "/api/chat"
         self._client = client
         self._num_ctx = num_ctx
+        self.fingerprint = f"ollama/v1 think=false num_ctx={num_ctx}"
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
 
     @staticmethod
     def to_messages(messages: list[Message]) -> list[dict[str, Any]]:
@@ -289,7 +334,9 @@ class OllamaProvider:
         if req.json_mode:
             body["format"] = "json"
         data = await _post(self._client, self._url, body, {})
-        msg = data.get("message", {})
+        if not isinstance(data, dict) or "message" not in data:
+            raise ProviderError("Ollama reply has no message", status=200, retryable=True, retry_limit=2)
+        msg = data["message"]
         calls = [
             ToolCall(
                 id=tc.get("id") or f"call_{i}",
