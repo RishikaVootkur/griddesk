@@ -13,6 +13,7 @@ from langgraph.types import Command
 from griddesk.agents.graph import AgentConfig, AgentSpec, build_graph, neutralize_customer_text
 from griddesk.agents.toolbox import Toolbox
 from griddesk.gateway import Gateway
+from griddesk.observability.tracing import set_attrs, span
 
 COMMON_TOOLS = ("verify_identity", "escalate_to_human", "search_policy")
 BILLING_TOOLS = (
@@ -108,16 +109,32 @@ class ConversationRunner:
                     awaiting_approval=await self.awaiting_approval(conversation_id),
                 )
             before = await self._message_count(conversation_id)
-            await self.graph.ainvoke(
-                {
-                    "conversation_id": conversation_id,
-                    "messages": [{"role": "user", "content": neutralize_customer_text(text)}],
-                    "steps": 0,
-                    "error": None,
-                },
-                self._cfg(conversation_id),
-            )
-            return await self._result(conversation_id, before + 1)
+            with span("invoke_agent griddesk", kind="AGENT") as sp:
+                set_attrs(
+                    sp,
+                    {
+                        "gen_ai.operation.name": "invoke_agent",
+                        "gen_ai.conversation.id": conversation_id,
+                        "input.value": text[:1000],
+                    },
+                )
+                result = await self._send(conversation_id, text, before)
+                set_attrs(
+                    sp, {"output.value": result.reply[:1000], "gen_ai.agent.name": ",".join(result.agents)}
+                )
+                return result
+
+    async def _send(self, conversation_id: str, text: str, before: int) -> TurnResult:
+        await self.graph.ainvoke(
+            {
+                "conversation_id": conversation_id,
+                "messages": [{"role": "user", "content": neutralize_customer_text(text)}],
+                "steps": 0,
+                "error": None,
+            },
+            self._cfg(conversation_id),
+        )
+        return await self._result(conversation_id, before + 1)
 
     async def resume(self, conversation_id: str) -> TurnResult:
         """Continue a conversation paused for approval, after an operator decided in the database."""
@@ -125,8 +142,14 @@ class ConversationRunner:
             if not await self.awaiting_approval(conversation_id):
                 raise ValueError(f"conversation {conversation_id} is not waiting for an approval")
             before = await self._message_count(conversation_id)
-            await self.graph.ainvoke(Command(resume={"resumed": True}), self._cfg(conversation_id))
-            return await self._result(conversation_id, before)
+            with span("invoke_agent griddesk resume", kind="AGENT") as sp:
+                set_attrs(
+                    sp, {"gen_ai.operation.name": "invoke_agent", "gen_ai.conversation.id": conversation_id}
+                )
+                await self.graph.ainvoke(Command(resume={"resumed": True}), self._cfg(conversation_id))
+                result = await self._result(conversation_id, before)
+                set_attrs(sp, {"output.value": result.reply[:1000]})
+                return result
 
     async def awaiting_approval(self, conversation_id: str) -> dict[str, Any] | None:
         snap = await self.graph.aget_state(self._cfg(conversation_id))

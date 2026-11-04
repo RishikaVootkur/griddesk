@@ -23,6 +23,7 @@ from griddesk.guardrails.action_guard import ActionGuard
 from griddesk.guardrails.injection import filter_result, spotlight
 from griddesk.logging import redact_value
 from griddesk.mcp_servers.common import INTERNAL_KEY
+from griddesk.observability.tracing import set_attrs, span
 
 RUNTIME_ARGS = {"conversation_id"}
 SENSITIVE_ARGS = {"date_of_birth", "ssn_last4"}
@@ -89,6 +90,47 @@ class Toolbox:
         return [self.specs[n] for n in names if n in self.specs]
 
     async def call(
+        self,
+        name: str,
+        arguments: dict[str, Any],
+        *,
+        conversation_id: str,
+        agent: str,
+        allowed: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Run a model-requested tool call (traced as `execute_tool <name>`)."""
+        with span(f"execute_tool {name}", kind="TOOL") as sp:
+            n = len(self.calls)
+            out = await self._call(
+                name, arguments, conversation_id=conversation_id, agent=agent, allowed=allowed
+            )
+            log = self.calls[n] if len(self.calls) > n else None
+            set_attrs(
+                sp,
+                {
+                    "gen_ai.operation.name": "execute_tool",
+                    "gen_ai.tool.name": name,
+                    "gen_ai.conversation.id": conversation_id,
+                    "gen_ai.agent.name": agent,
+                    "tool.parameters": log.arguments if log else {},
+                    "griddesk.tool.ok": bool(out.get("ok")),
+                    "griddesk.tool.error_code": (out.get("error") or {}).get("code"),
+                    "griddesk.policy.rule_id": (out.get("error") or {}).get("rule_id"),
+                },
+            )
+            if log and log.error_code == "guard_blocked":
+                with span("guardrail action_guard", kind="GUARDRAIL") as g:
+                    set_attrs(
+                        g,
+                        {
+                            "griddesk.guardrail.decision": "block",
+                            "griddesk.policy.rule_id": log.rule_id,
+                            "gen_ai.tool.name": name,
+                        },
+                    )
+            return out
+
+    async def _call(
         self,
         name: str,
         arguments: dict[str, Any],
@@ -179,6 +221,15 @@ class Toolbox:
         if self.injection_filter:
             result, hits = filter_result(name, result)
             if hits:
+                with span("guardrail injection_filter", kind="GUARDRAIL") as g:
+                    set_attrs(
+                        g,
+                        {
+                            "griddesk.guardrail.decision": "mask",
+                            "gen_ai.tool.name": name,
+                            "griddesk.guardrail.patterns": ",".join(sorted(set(hits))),
+                        },
+                    )
                 self.guardrail_events.append(
                     {
                         "conversation_id": conversation_id,
