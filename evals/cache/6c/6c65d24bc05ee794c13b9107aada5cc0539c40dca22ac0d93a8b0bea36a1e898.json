@@ -1,0 +1,19 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_zhtukq0z",
+   "name": "verify_identity",
+   "arguments": {
+    "account_id": "100056",
+    "date_of_birth": "1969-03-17",
+    "last_name": "Smith"
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 3296,
+  "output_tokens": 50
+ },
+ "latency_ms": 24737.0
+}

@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Great! Your identity has been verified. I can now assist you with your latest bill. Could you please provide the bill ID or let me know if you need help understanding the charges?",
+ "usage": {
+  "input_tokens": 3527,
+  "output_tokens": 38
+ },
+ "latency_ms": 42350.7
+}

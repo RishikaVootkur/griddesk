@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Sure, I can help with that. Could you please provide your account number and the bill ID?",
+ "usage": {
+  "input_tokens": 3232,
+  "output_tokens": 21
+ },
+ "latency_ms": 12058.2
+}

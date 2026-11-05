@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your current balance is $64.20, and you don't have any past due amount. Since you're in good standing, we can set up a payment plan. To split your balance into three monthly payments, I'll need to create a payment plan for you. Would you like to proceed with that?",
+ "usage": {
+  "input_tokens": 3601,
+  "output_tokens": 65
+ },
+ "latency_ms": 42036.1
+}

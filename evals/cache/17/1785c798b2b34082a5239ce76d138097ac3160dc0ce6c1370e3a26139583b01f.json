@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your March 2024 bill (Bill ID: B-102720-2610) has been retrieved. The bill covers the period from September 2 to October 2, 2026. The total amount is $372.69, which includes energy, delivery, a monthly customer charge, and state utility tax. Would you like me to explain the line items in more detail?",
+ "usage": {
+  "input_tokens": 3853,
+  "output_tokens": 92
+ },
+ "latency_ms": 29347.7
+}

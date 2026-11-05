@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Your account balance is $64.20, and you're not eligible for a payment plan at this time due to a medical necessity on file. Would you like to discuss other options for managing your balance?",
- "usage": {
-  "input_tokens": 2597,
-  "output_tokens": 44
- },
- "latency_ms": 13141.1
-}

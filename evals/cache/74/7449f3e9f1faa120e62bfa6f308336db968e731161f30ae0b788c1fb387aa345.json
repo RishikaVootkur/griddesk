@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I understand. Could you please provide the ZIP code for 949 Michael Causeway when you're able to? Until then, I'll be here to assist you once you have that information. Have a great day!",
+ "usage": {
+  "input_tokens": 3988,
+  "output_tokens": 46
+ },
+ "latency_ms": 34815.8
+}

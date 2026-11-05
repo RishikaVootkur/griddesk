@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I've verified your identity. To set up your payment plan, I'll need to check your account details. Could you confirm your account number again?",
- "usage": {
-  "input_tokens": 2300,
-  "output_tokens": 31
- },
- "latency_ms": 7105.7
-}

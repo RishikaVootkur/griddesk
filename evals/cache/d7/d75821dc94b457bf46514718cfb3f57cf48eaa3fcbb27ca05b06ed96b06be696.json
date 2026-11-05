@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your account balance is $292.05. To set up a payment plan, I'll need to know how many monthly installments you'd like (3 to 12). Would you like to proceed?",
+ "usage": {
+  "input_tokens": 3601,
+  "output_tokens": 46
+ },
+ "latency_ms": 30728.7
+}

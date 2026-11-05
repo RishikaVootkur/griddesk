@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Yes, please schedule a meter check.OK, we'll arrange a meter check for you. It should be completed within the next 3‑5 business days. Is there anything else I can help you with today?No, that's all. Thank you. ###STOP###",
+ "usage": {
+  "input_tokens": 681,
+  "output_tokens": 79
+ },
+ "latency_ms": 720.7,
+ "cost_usd": 0.00014954999999999998
+}

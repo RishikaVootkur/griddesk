@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I'll need the exact street address and ZIP code where the outage occurred to check for an outage credit. Could you provide that information?",
+ "usage": {
+  "input_tokens": 3422,
+  "output_tokens": 28
+ },
+ "latency_ms": 14255.5
+}

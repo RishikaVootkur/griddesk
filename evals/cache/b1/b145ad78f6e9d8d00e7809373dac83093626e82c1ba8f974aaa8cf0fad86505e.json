@@ -1,0 +1,18 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_iywd1lwt",
+   "name": "lookup_outage",
+   "arguments": {
+    "zip_code": "54321",
+    "street": "123 Maple St"
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 3353,
+  "output_tokens": 33
+ },
+ "latency_ms": 14870.2
+}

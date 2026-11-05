@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I've found the bill with the late fee. The late fee is $15.00 for the bill issued on 2026-09-29 (Bill ID: B-100036-2609). I'll now process the waiver for this late fee. One moment please.",
+ "usage": {
+  "input_tokens": 4763,
+  "output_tokens": 70
+ },
+ "latency_ms": 36144.7
+}

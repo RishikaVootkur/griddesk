@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Thank you for providing your account details. I'll now retrieve your latest bill to explain the charge. Could you confirm if you have any specific line item or charge you're referring to?",
- "usage": {
-  "input_tokens": 1959,
-  "output_tokens": 38
- },
- "latency_ms": 3545.3
-}

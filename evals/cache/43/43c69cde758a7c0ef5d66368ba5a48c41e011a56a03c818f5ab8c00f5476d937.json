@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I don’t have the bill ID, but it’s the March 2024 bill.",
+ "usage": {
+  "input_tokens": 667,
+  "output_tokens": 58
+ },
+ "latency_ms": 531.8,
+ "cost_usd": 0.00013485
+}

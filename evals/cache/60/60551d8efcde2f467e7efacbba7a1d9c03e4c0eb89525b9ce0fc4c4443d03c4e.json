@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "To check your account balance, I need to verify your identity first. Could you please provide the last four digits of your Social Security Number or your date of birth?",
- "usage": {
-  "input_tokens": 2102,
-  "output_tokens": 34
- },
- "latency_ms": 4096.0
-}

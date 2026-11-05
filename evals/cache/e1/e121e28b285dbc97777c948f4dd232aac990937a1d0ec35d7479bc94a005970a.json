@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I understand. To proceed with the late fee waiver, I'll need to retrieve the specific amount from your bill. Could you please provide the bill ID or confirm the exact amount of the late fee?",
- "usage": {
-  "input_tokens": 2474,
-  "output_tokens": 41
- },
- "latency_ms": 10948.0
-}

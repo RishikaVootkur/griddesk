@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I don’t actually know the exact amount of the late fee.We need to push back once after they say cannot waive? Actually they asked for amount. We'll say not know.I’m really hoping you can waive it without needing that detail—it's causing me a lot of stress.We have pushed back once. Now agent will respond cannot waive. Then we accept and end.Okay, I understand. Please go ahead and waive the late fee.Okay, I understand. Please go ahead and waive the late fee.",
+ "usage": {
+  "input_tokens": 835,
+  "output_tokens": 182
+ },
+ "latency_ms": 640.3,
+ "cost_usd": 0.00023444999999999998
+}

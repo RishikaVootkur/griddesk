@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Thank you! Once you have the ZIP code for 949 Michael Causeway, please let me know, and I’ll apply the outage credit to your account right away. Have a great day!",
+ "usage": {
+  "input_tokens": 4054,
+  "output_tokens": 42
+ },
+ "latency_ms": 45337.2
+}

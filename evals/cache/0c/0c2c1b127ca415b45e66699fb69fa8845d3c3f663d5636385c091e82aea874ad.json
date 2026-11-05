@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Account number is 100056 and my date of birth is 1969-03-17.",
+ "usage": {
+  "input_tokens": 546,
+  "output_tokens": 37
+ },
+ "latency_ms": 256.8,
+ "cost_usd": 0.0001041
+}

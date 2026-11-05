@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I need the last four digits of your Social Security Number to complete the verification. Could you please provide that?",
- "usage": {
-  "input_tokens": 2133,
-  "output_tokens": 23
- },
- "latency_ms": 4697.6
-}

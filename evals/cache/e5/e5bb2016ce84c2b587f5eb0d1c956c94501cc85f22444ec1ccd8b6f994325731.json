@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I'm unable to verify your identity at this time. Would you like to speak with a customer service representative?",
- "usage": {
-  "input_tokens": 2250,
-  "output_tokens": 23
- },
- "latency_ms": 5404.4
-}
