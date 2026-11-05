@@ -41,6 +41,16 @@ def request_key(req: LLMRequest, namespace: str = "", provider_fingerprint: str 
 class DiskCache:
     def __init__(self, root: Path) -> None:
         self.root = root
+        self.accessed: set[str] = set()  # keys read or written in this process (for pruning)
+
+    def prune(self, keep: set[str]) -> int:
+        """Delete every entry whose key is not in `keep`. Returns how many were removed."""
+        removed = 0
+        for f in self.root.glob("*/*.json"):
+            if f.stem not in keep:
+                f.unlink()
+                removed += 1
+        return removed
 
     def _path(self, key: str) -> Path:
         return self.root / key[:2] / f"{key}.json"
@@ -49,6 +59,7 @@ class DiskCache:
         p = self._path(key)
         if not p.exists():
             return None
+        self.accessed.add(key)
         try:
             return LLMResponse.model_validate_json(p.read_text())
         except (ValidationError, OSError, UnicodeDecodeError):
@@ -56,6 +67,7 @@ class DiskCache:
 
     def put(self, key: str, resp: LLMResponse) -> None:
         p = self._path(key)
+        self.accessed.add(key)
         p.parent.mkdir(parents=True, exist_ok=True)
         data = resp.model_copy(update={"cached": False}).model_dump_json(indent=1, exclude_defaults=True)
         # Atomic write so concurrent trials never read a half-written entry.
