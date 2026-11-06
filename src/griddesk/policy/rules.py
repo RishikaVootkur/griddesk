@@ -359,5 +359,5 @@ def check_autopay_change(enable: bool) -> Decision:
 
 def check_outage_report(already_reported: bool) -> Decision:
     if already_reported:
-        return deny("P-26", "This account already reported the current outage.")
+        return deny("P-26", "This address already has a report for the current outage.")
     return ALLOW
