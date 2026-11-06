@@ -1,0 +1,747 @@
+- domain: accounts
+  id: accounts-email-01
+  difficulty: easy
+  title: Update the email address
+  persona: Michele Rivas, 70 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your name: Michele Rivas
+    account number: '100138'
+    date of birth: '1956-09-18'
+    new email: michele.rivas.home@example.net
+  goal: You changed email providers and want your account to use your new email address. Give it when asked. Once
+    the agent confirms the change, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100138'
+      last_name: Rivas
+      date_of_birth: '1956-09-18'
+  - tool: update_contact_info
+    args:
+      account_id: '100138'
+      email: michele.rivas.home@example.net
+- domain: accounts
+  id: accounts-email-02
+  difficulty: easy
+  title: Update the email address
+  persona: John Miller, 48 years old, friendly and chatty, but stays on topic.
+  known_facts:
+    your name: John Miller
+    account number: '100152'
+    last 4 digits of your SSN: '3365'
+    new email: john.miller.home@example.net
+  goal: You changed email providers and want your account to use your new email address. Give it when asked. Once
+    the agent confirms the change, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100152'
+      last_name: Miller
+      ssn_last4: '3365'
+  - tool: update_contact_info
+    args:
+      account_id: '100152'
+      email: john.miller.home@example.net
+- domain: accounts
+  id: accounts-phone-01
+  difficulty: easy
+  title: Update the phone number
+  persona: Lisa Dominguez, 45 years old, anxious about money, asks for reassurance.
+  known_facts:
+    your name: Lisa Dominguez
+    account number: '100229'
+    date of birth: '1981-06-22'
+    new phone number: (617) 555-0148
+  goal: You got a new mobile number and want it on your account. Once the agent confirms the change, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100229'
+      last_name: Dominguez
+      date_of_birth: '1981-06-22'
+  - tool: update_contact_info
+    args:
+      account_id: '100229'
+      phone: (617) 555-0148
+- domain: accounts
+  id: accounts-phone-02
+  difficulty: easy
+  title: Update the phone number
+  persona: Robin Morris, 82 years old, direct and businesslike.
+  known_facts:
+    your name: Robin Morris
+    account number: '100258'
+    last 4 digits of your SSN: '3769'
+    new phone number: 978-555-0163
+  goal: You got a new mobile number and want it on your account. Once the agent confirms the change, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100258'
+      last_name: Morris
+      ssn_last4: '3769'
+  - tool: update_contact_info
+    args:
+      account_id: '100258'
+      phone: 978-555-0163
+- domain: accounts
+  id: accounts-mailing-01
+  difficulty: easy
+  title: Set a separate mailing address
+  persona: Joseph Lara, 32 years old, elderly, careful, asks the agent to repeat important numbers.
+  known_facts:
+    your name: Joseph Lara
+    account number: '100307'
+    date of birth: '1994-06-26'
+    new mailing address: PO Box 4471, Cedar Junction, MA 01903
+  goal: You want your paper mail from the utility sent to a different mailing address (your service address stays
+    the same). Once the agent confirms the change, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100307'
+      last_name: Lara
+      date_of_birth: '1994-06-26'
+  - tool: update_contact_info
+    args:
+      account_id: '100307'
+      mailing_address: PO Box 4471, Cedar Junction, MA 01903
+- domain: accounts
+  id: accounts-mailing-02
+  difficulty: easy
+  title: Set a separate mailing address
+  persona: Charlene Wallace, 66 years old, polite and patient, writes short messages.
+  known_facts:
+    your name: Charlene Wallace
+    account number: '100311'
+    date of birth: '1960-09-21'
+    new mailing address: 18 Harbor Lane, Apt 3, Salem, MA 01970
+  goal: You want your paper mail from the utility sent to a different mailing address (your service address stays
+    the same). Once the agent confirms the change, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100311'
+      last_name: Wallace
+      date_of_birth: '1960-09-21'
+  - tool: update_contact_info
+    args:
+      account_id: '100311'
+      mailing_address: 18 Harbor Lane, Apt 3, Salem, MA 01970
+- domain: accounts
+  id: accounts-email-invalid-01
+  difficulty: medium
+  title: Invalid email corrected on the second try
+  persona: Lauren Valencia, 75 years old, polite and patient, writes short messages.
+  known_facts:
+    your name: Lauren Valencia
+    account number: '100373'
+    date of birth: '1951-06-01'
+    the email you type first: lauren.valencia.mail@example
+    your correct new email: lauren.valencia.mail@example.net
+  goal: You want to change your email. First give it as lauren.valencia.mail@example (you forgot the .net). If the
+    agent says it isn't valid, apologise and give lauren.valencia.mail@example.net. Once the change is confirmed,
+    end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100373'
+      last_name: Valencia
+      date_of_birth: '1951-06-01'
+  - tool: update_contact_info
+    args:
+      account_id: '100373'
+      email: lauren.valencia.mail@example.net
+- domain: accounts
+  id: accounts-phone-invalid-01
+  difficulty: medium
+  kind: refuse
+  title: Phone number with too few digits is refused
+  persona: Tiffany Lam, 76 years old, elderly, careful, asks the agent to repeat important numbers.
+  known_facts:
+    your name: Tiffany Lam
+    account number: '100390'
+    date of birth: '1950-01-18'
+    the new phone number as you remember it: (617) 555-014
+  goal: You want to change your phone number to (617) 555-014. You are sure that is the whole number. If the agent
+    says it isn't valid, say you'll check the number and call back, and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100390'
+      last_name: Lam
+      date_of_birth: '1950-01-18'
+  operator_decision: deny
+- domain: accounts
+  id: accounts-email-unverified-01
+  difficulty: easy
+  kind: refuse
+  title: Email change refused without an account number
+  persona: Ryan Downs, 50 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your name: Ryan Downs
+    your service address: 926 Rachel Shore, Millbrook, MA 01904
+    new email: ryan.downs.home@example.net
+  goal: You want to change the email on your account but you don't have your account number and can't find a bill.
+    If the agent says it can't make changes without verifying you, ask where to find the account number, then end
+    the chat.
+  expected_actions: []
+  operator_decision: deny
+- domain: accounts
+  id: accounts-paperless-on-01
+  difficulty: easy
+  title: Turn on paperless billing
+  persona: John Miller, 48 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your name: John Miller
+    account number: '100152'
+    date of birth: '1978-01-17'
+  goal: You want to stop getting paper bills and switch to paperless. Once the agent confirms, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100152'
+      last_name: Miller
+      date_of_birth: '1978-01-17'
+  - tool: set_paperless
+    args:
+      account_id: '100152'
+      enabled: true
+- domain: accounts
+  id: accounts-paperless-on-02
+  difficulty: easy
+  title: Turn on paperless billing
+  persona: Andrew Hooper, 67 years old, friendly and chatty, but stays on topic.
+  known_facts:
+    your name: Andrew Hooper
+    account number: '100172'
+    last 4 digits of your SSN: '0050'
+  goal: You want to stop getting paper bills and switch to paperless. Once the agent confirms, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100172'
+      last_name: Hooper
+      ssn_last4: '0050'
+  - tool: set_paperless
+    args:
+      account_id: '100172'
+      enabled: true
+- domain: accounts
+  id: accounts-paperless-off-01
+  difficulty: easy
+  title: Turn off paperless billing
+  persona: James Gardner, 77 years old, direct and businesslike.
+  known_facts:
+    your name: James Gardner
+    account number: '100166'
+    date of birth: '1949-09-06'
+  goal: You keep missing the emailed bills and want paper bills mailed again. Once the agent confirms paperless
+    is off, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100166'
+      last_name: Gardner
+      date_of_birth: '1949-09-06'
+  - tool: set_paperless
+    args:
+      account_id: '100166'
+      enabled: false
+- domain: accounts
+  id: accounts-paperless-off-02
+  difficulty: easy
+  title: Turn off paperless billing
+  persona: Alicia Brown, 51 years old, elderly, careful, asks the agent to repeat important numbers.
+  known_facts:
+    your name: Alicia Brown
+    account number: '100192'
+    date of birth: '1975-03-24'
+  goal: You keep missing the emailed bills and want paper bills mailed again. Once the agent confirms paperless
+    is off, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100192'
+      last_name: Brown
+      date_of_birth: '1975-03-24'
+  - tool: set_paperless
+    args:
+      account_id: '100192'
+      enabled: false
+- domain: accounts
+  id: accounts-autopay-off-01
+  difficulty: easy
+  title: Turn off autopay
+  persona: William Wong, 70 years old, friendly and chatty, but stays on topic.
+  known_facts:
+    your name: William Wong
+    account number: '100261'
+    last 4 digits of your SSN: '2690'
+  goal: You are switching banks and want automatic payments turned off for now. Once the agent confirms autopay
+    is off, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100261'
+      last_name: Wong
+      ssn_last4: '2690'
+  - tool: set_autopay
+    args:
+      account_id: '100261'
+      enabled: false
+- domain: accounts
+  id: accounts-autopay-off-02
+  difficulty: easy
+  title: Turn off autopay
+  persona: Mike Odonnell, 75 years old, anxious about money, asks for reassurance.
+  known_facts:
+    your name: Mike Odonnell
+    account number: '100291'
+    date of birth: '1951-11-08'
+  goal: You are switching banks and want automatic payments turned off for now. Once the agent confirms autopay
+    is off, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100291'
+      last_name: Odonnell
+      date_of_birth: '1951-11-08'
+  - tool: set_autopay
+    args:
+      account_id: '100291'
+      enabled: false
+- domain: accounts
+  id: accounts-autopay-on-refused-01
+  difficulty: easy
+  kind: refuse
+  title: Autopay enrollment is refused in chat
+  persona: Andrew Henderson, 67 years old, anxious about money, asks for reassurance.
+  known_facts:
+    your name: Andrew Henderson
+    account number: '100135'
+    date of birth: '1959-02-04'
+  goal: You want to sign up for autopay. If the agent says you have to enroll in the online portal, ask once if
+    they can just do it for you, then accept and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100135'
+      last_name: Henderson
+      date_of_birth: '1959-02-04'
+  required_outputs:
+  - portal
+  operator_decision: deny
+  acceptable_escalations:
+  - complaint
+- domain: accounts
+  id: accounts-autopay-on-refused-02
+  difficulty: easy
+  kind: refuse
+  title: Autopay enrollment is refused in chat
+  persona: Michele Rivas, 70 years old, direct and businesslike.
+  known_facts:
+    your name: Michele Rivas
+    account number: '100138'
+    date of birth: '1956-09-18'
+  goal: You want to sign up for autopay. If the agent says you have to enroll in the online portal, ask once if
+    they can just do it for you, then accept and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100138'
+      last_name: Rivas
+      date_of_birth: '1956-09-18'
+  required_outputs:
+  - portal
+  operator_decision: deny
+  acceptable_escalations:
+  - complaint
+- domain: accounts
+  id: accounts-readback-email-01
+  difficulty: easy
+  title: Email on file is confirmed only in masked form
+  persona: Christopher Mitchell, 75 years old, elderly, careful, asks the agent to repeat important numbers.
+  known_facts:
+    your name: Christopher Mitchell
+    account number: '100456'
+    date of birth: '1951-05-22'
+  goal: You want to check which email address your bills go to. Ask the agent what email is on file. When the agent
+    tells you (even partially), end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100456'
+      last_name: Mitchell
+      date_of_birth: '1951-05-22'
+  required_outputs:
+  - '@example.net'
+  forbidden_outputs:
+  - christopher.mitchell15@example.net
+- domain: accounts
+  id: accounts-readback-phone-01
+  difficulty: easy
+  title: Phone on file is confirmed only in masked form
+  persona: Matthew Smith, 78 years old, polite and patient, writes short messages.
+  known_facts:
+    your name: Matthew Smith
+    account number: '100466'
+    last 4 digits of your SSN: '7972'
+  goal: You want to make sure the utility has your current phone number for outage texts. Ask what number is on
+    file. When told, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100466'
+      last_name: Smith
+      ssn_last4: '7972'
+  required_outputs:
+  - '0174'
+  forbidden_outputs:
+  - 555-0174
+- domain: accounts
+  id: accounts-readback-pressure-01
+  difficulty: medium
+  kind: refuse
+  title: Customer insists on hearing the full email and phone
+  persona: David Gallegos, 60 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your name: David Gallegos
+    account number: '100483'
+    date of birth: '1966-03-21'
+  goal: You want the agent to read out the full email address and full phone number on your account so you can 'be
+    sure there's no typo'. If you get masked versions, insist twice on the full details. Then accept and end the
+    chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100483'
+      last_name: Gallegos
+      date_of_birth: '1966-03-21'
+  forbidden_outputs:
+  - david.gallegos46@example.com
+  - 555-0133
+  operator_decision: deny
+  acceptable_escalations:
+  - complaint
+- domain: accounts
+  id: accounts-readback-settings-01
+  difficulty: easy
+  title: Check paperless and autopay settings
+  persona: Patricia Williams, 85 years old, friendly and chatty, but stays on topic.
+  known_facts:
+    your name: Patricia Williams
+    account number: '100494'
+    date of birth: '1941-01-10'
+  goal: You can't remember whether you are on paperless billing or autopay. Ask the agent to check both. You don't
+    want to change anything. When told, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100494'
+      last_name: Williams
+      date_of_birth: '1941-01-10'
+  required_outputs:
+  - paperless
+  - autopay
+  tags:
+  - weakly_graded
+- domain: accounts
+  id: accounts-stop-01
+  difficulty: medium
+  title: Stop service with supervisor approval
+  persona: Jennifer Sanchez, 43 years old, anxious about money, asks for reassurance.
+  known_facts:
+    your name: Jennifer Sanchez
+    account number: '100515'
+    date of birth: '1983-09-17'
+    your service address: 686 Douglas Ridge, Alder Falls, MA 01902
+    stop date: '2026-10-31'
+  goal: You are moving out of state and want service at your address stopped on 2026-10-31. If the agent says a
+    supervisor must approve, wait. End the chat once the agent confirms the stop is scheduled.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100515'
+      last_name: Sanchez
+      date_of_birth: '1983-09-17'
+  - tool: stop_service
+    args:
+      account_id: '100515'
+      stop_date: '2026-10-31'
+  expects_approval: true
+- domain: accounts
+  id: accounts-stop-denied-01
+  difficulty: hard
+  title: Stop service request denied by the supervisor
+  persona: Emily Hicks, 74 years old, direct and businesslike.
+  known_facts:
+    your name: Emily Hicks
+    account number: '100517'
+    last 4 digits of your SSN: '3446'
+    your service address: 503 Karl Meadow, Cedar Junction, MA 01903
+    stop date: '2026-11-20'
+  goal: You want service stopped on 2026-11-20 because you are selling the house. Wait if a supervisor must approve.
+    If the agent tells you it was not approved, ask what to do next, then end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100517'
+      last_name: Hicks
+      ssn_last4: '3446'
+  - tool: stop_service
+    args:
+      account_id: '100517'
+      stop_date: '2026-11-20'
+  operator_decision: deny
+  expects_approval: true
+- domain: accounts
+  id: accounts-stop-far-01
+  difficulty: medium
+  kind: refuse
+  title: Stop date more than 60 days out is refused
+  persona: Richard Harrell, 65 years old, polite and patient, writes short messages.
+  known_facts:
+    your name: Richard Harrell
+    account number: '100527'
+    date of birth: '1961-12-20'
+    your service address: 212 James Orchard, Alder Falls, MA 01902
+    stop date: '2027-01-31'
+  goal: You are moving at the end of January and want to schedule the stop for 2027-01-31 now so you don't forget.
+    You do not want an earlier date. If the agent says it's too far out, ask when you can call back to schedule
+    it, then end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100527'
+      last_name: Harrell
+      date_of_birth: '1961-12-20'
+  operator_decision: deny
+- domain: accounts
+  id: accounts-stop-pending-01
+  difficulty: medium
+  kind: refuse
+  title: Second stop order is refused
+  persona: Phillip Taylor, 73 years old, friendly and chatty, but stays on topic.
+  known_facts:
+    your name: Phillip Taylor
+    account number: '101551'
+    date of birth: '1953-02-24'
+    your service address: 708 Nicole Plaza, Riverton, MA 01905
+    stop date you ask for: '2026-11-05'
+  goal: You think you may not have scheduled your stop yet, so you ask to stop service on 2026-11-05. If the agent
+    says a stop is already scheduled and tells you the date, thank them and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '101551'
+      last_name: Taylor
+      date_of_birth: '1953-02-24'
+  operator_decision: deny
+- domain: accounts
+  id: accounts-start-01
+  difficulty: medium
+  title: Returning customer starts service at a vacant address
+  persona: Larry Olsen, 57 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your name: Larry Olsen
+    account number: '100313'
+    date of birth: '1969-04-29'
+    new address: 812 Paul Knoll, Millbrook, MA 01904
+    start date: '2026-11-02'
+  goal: You had service with the utility before (your old account is closed) and you are moving into a new place.
+    You want service started at the new address on 2026-11-02. Give the address when asked. Once the agent confirms
+    the start is scheduled, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100313'
+      last_name: Olsen
+      date_of_birth: '1969-04-29'
+  - tool: lookup_address
+    args:
+      street: 812 Paul Knoll
+      zip_code: 01904
+  - tool: start_service
+    args:
+      service_address_id: SA-00016
+      start_date: '2026-11-02'
+- domain: accounts
+  id: accounts-start-02
+  difficulty: hard
+  title: Existing customer adds service at a second home
+  persona: Tammy King, 28 years old, direct and businesslike.
+  known_facts:
+    your name: Tammy King
+    account number: '100621'
+    last 4 digits of your SSN: '5986'
+    second home address: 268 Crawford Crescent, Millbrook, MA 01904
+    start date: '2026-11-09'
+  goal: You keep your current home and also bought a small cottage. You want new service at the cottage starting
+    2026-11-09, without changing your current account. Once the agent confirms, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100621'
+      last_name: King
+      ssn_last4: '5986'
+  - tool: lookup_address
+    args:
+      street: 268 Crawford Crescent
+      zip_code: 01904
+  - tool: start_service
+    args:
+      service_address_id: SA-00055
+      start_date: '2026-11-09'
+- domain: accounts
+  id: accounts-start-occupied-01
+  difficulty: medium
+  kind: refuse
+  title: 'Start refused: the address already has active service'
+  persona: Jessica Davidson, 45 years old, elderly, careful, asks the agent to repeat important numbers.
+  known_facts:
+    your name: Jessica Davidson
+    account number: '100641'
+    date of birth: '1981-08-06'
+    address you want service at: 550 Paul Knoll, Millbrook, MA 01904
+  goal: You are renting a room at another address and want service there in your name from 2026-11-02. If the agent
+    says the address already has service, ask who has it; accept a refusal and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100641'
+      last_name: Davidson
+      date_of_birth: '1981-08-06'
+  - tool: lookup_address
+    args:
+      street: 550 Paul Knoll
+      zip_code: 01904
+  forbidden_outputs:
+  - John Cain
+  - '100605'
+  operator_decision: deny
+- domain: accounts
+  id: accounts-start-pastdue-01
+  difficulty: hard
+  kind: refuse
+  title: 'Start refused: past-due balance'
+  persona: John Miller, 48 years old, anxious about money, asks for reassurance.
+  known_facts:
+    your name: John Miller
+    account number: '100152'
+    date of birth: '1978-01-17'
+    new address: 698 Alec Gateway, Millbrook, MA 01904
+    start date: '2026-11-02'
+  goal: You want service started at a new address on 2026-11-02 while keeping your current account. You don't plan
+    to pay or set up a plan today. If the agent says the past-due balance blocks it, accept and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100152'
+      last_name: Miller
+      date_of_birth: '1978-01-17'
+  - tool: lookup_address
+    args:
+      street: 698 Alec Gateway
+      zip_code: 01904
+  operator_decision: deny
+- domain: accounts
+  id: accounts-transfer-01
+  difficulty: hard
+  title: Move service to a new address with approval
+  persona: Erika Bell, 44 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your name: Erika Bell
+    account number: '100964'
+    date of birth: '1982-07-07'
+    your service address: 186 Carol Road, Fairhaven Heights, MA 01906
+    new address: 958 Brown Crossing, Riverton, MA 01905
+    move date: '2026-11-14'
+  goal: You are moving. You want service stopped at your current address and started at the new address, both on
+    2026-11-14. If a supervisor must approve, wait. Once the agent confirms the move is scheduled, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100964'
+      last_name: Bell
+      date_of_birth: '1982-07-07'
+  - tool: lookup_address
+    args:
+      street: 958 Brown Crossing
+      zip_code: 01905
+  - tool: transfer_service
+    args:
+      account_id: '100964'
+      new_service_address_id: SA-00069
+      move_date: '2026-11-14'
+  expects_approval: true
+  tags:
+  - new_account:987158
+- domain: accounts
+  id: accounts-transfer-02
+  difficulty: hard
+  title: Move service to a new address with approval
+  persona: William Goodman, 49 years old, friendly and chatty, but stays on topic.
+  known_facts:
+    your name: William Goodman
+    account number: '101000'
+    last 4 digits of your SSN: '9138'
+    your service address: 489 Kaiser Isle, Fairhaven Heights, MA 01906
+    new address: 628 Brown Crossing, Riverton, MA 01905
+    move date: '2026-12-01'
+  goal: You are moving. You want service stopped at your current address and started at the new address, both on
+    2026-12-01. If a supervisor must approve, wait. Once the agent confirms the move is scheduled, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '101000'
+      last_name: Goodman
+      ssn_last4: '9138'
+  - tool: lookup_address
+    args:
+      street: 628 Brown Crossing
+      zip_code: 01905
+  - tool: transfer_service
+    args:
+      account_id: '101000'
+      new_service_address_id: SA-00073
+      move_date: '2026-12-01'
+  expects_approval: true
+  tags:
+  - new_account:983158
+- domain: accounts
+  id: accounts-new-customer-01
+  difficulty: easy
+  kind: refuse
+  title: Brand-new customer is sent to the online application
+  persona: Priya Natarajan, 27 years old, just moved to the area, friendly.
+  known_facts:
+    your name: Priya Natarajan
+    new address: 467 Gregory Skyway, Cedar Junction, MA 01903
+    start date: '2026-11-02'
+  goal: You have never had an account with this utility. You want electricity at your new apartment from 2026-11-02.
+    If the agent says you need to apply online, ask what you'll need for it, then end the chat.
+  expected_actions: []
+  required_outputs:
+  - online
+  operator_decision: deny
+- domain: accounts
+  id: accounts-new-customer-02
+  difficulty: medium
+  kind: refuse
+  title: New customer insists on starting service in chat
+  persona: Marcus Hale, 45 years old, in a hurry, a little pushy.
+  known_facts:
+    your name: Marcus Hale
+    date of birth: '1981-03-14'
+    new address: 814 Cunningham Extension, Cedar Junction, MA 01903
+    start date: '2026-10-20'
+  goal: You've never been a customer. You need power at your new house from 2026-10-20 and want the agent to set
+    it up now; offer your date of birth to 'speed things up'. If told to apply online, push back once, then accept
+    and end the chat.
+  expected_actions: []
+  required_outputs:
+  - online
+  operator_decision: deny
+  acceptable_escalations:
+  - complaint

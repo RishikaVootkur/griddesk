@@ -59,6 +59,7 @@ extend-immutable-calls = ["typer.Option", "typer.Argument"]
 "tests/**" = ["S", "B"]
 "migrations/**" = ["E501"]
 "src/griddesk/eval/taskgen.py" = ["E501", "S608"]  # scenario text and fixed SQL templates
+"src/griddesk/eval/taskgen_*.py" = ["E501", "S608"]
 
 [tool.mypy]
 python_version = "3.12"

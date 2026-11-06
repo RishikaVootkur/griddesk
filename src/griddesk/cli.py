@@ -223,15 +223,29 @@ def eval_gate(
 
 
 @eval_app.command("build-tasks")
-def eval_build_tasks(out: Path = typer.Option(Path("evals/tasks/billing.yaml"))) -> None:
-    """Regenerate template-built tasks from the deterministic seed (run `make seed` first)."""
+def eval_build_tasks(
+    out: Path | None = typer.Option(None, help="Rebuild only this suite file (default: every suite)."),
+) -> None:
+    """Regenerate template-built task suites from the deterministic seed (run `make seed` first)."""
+    from griddesk.config import REPO_ROOT
     from griddesk.db.session import live_session_factory
-    from griddesk.eval.taskgen import build, write
+    from griddesk.eval.taskgen import build, suites, write
 
+    all_suites = suites()
+    if out is not None:
+        key = next(
+            (k for k in all_suites if (REPO_ROOT / k).resolve() == out.resolve() or Path(k) == out), None
+        )
+        if key is None:
+            typer.echo(f"unknown suite {out}; known: {', '.join(all_suites)}", err=True)
+            raise typer.Exit(code=1)
+        all_suites = {key: all_suites[key]}
     with live_session_factory()() as s:
-        tasks = build(s)
-    write(tasks, out)
-    typer.echo(f"wrote {len(tasks)} tasks to {out}")
+        for rel, templates in all_suites.items():
+            tasks = build(s, templates)
+            path = out if out is not None else REPO_ROOT / rel
+            write(tasks, path)
+            typer.echo(f"wrote {len(tasks)} tasks to {path}")
 
 
 @eval_app.command("compare")
