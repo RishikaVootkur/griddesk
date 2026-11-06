@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Thank you. I need to confirm your identity. Could you please provide your date of birth?",
+ "usage": {
+  "input_tokens": 3884,
+  "output_tokens": 20
+ },
+ "latency_ms": 22388.6
+}

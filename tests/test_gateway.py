@@ -379,6 +379,14 @@ def test_unsigned_tool_calls_get_the_placeholder_signature():
     assert contents[0]["parts"][0]["thoughtSignature"] == "skip_thought_signature_validator"
 
 
+def test_daily_quota_429_is_not_retried():
+    quota = "GenerateRequestsPerDayPerProjectPerModel-FreeTier"
+    body = '{"error": {"code": 429, "details": [{"violations": [{"quotaId": "%s"}]}]}}' % quota  # noqa: UP031
+    with pytest.raises(ProviderError) as e:
+        run(_gemini(body, status=429).complete(req("gemini:gemini-3.8-flash")))
+    assert e.value.status == 429 and not e.value.retryable
+
+
 def test_keyless_replay_computes_the_same_keys_as_the_live_recording(tmp_path):
     from griddesk.gateway.providers import FINGERPRINTS, GroqProvider
 

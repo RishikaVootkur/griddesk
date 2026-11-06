@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "The system requires an outage ID to process the credit. The qualifying outage at your address was OUT-2610-05. Could you confirm if this is the outage you're referring to?",
- "usage": {
-  "input_tokens": 2344,
-  "output_tokens": 42
- },
- "latency_ms": 9115.3
-}

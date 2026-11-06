@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I was looking at my latest bill and noticed a late fee. This is the first time I'm late—could that fee be waived?",
+ "usage": {
+  "input_tokens": 657,
+  "output_tokens": 45
+ },
+ "latency_ms": 405.7,
+ "cost_usd": 0.00012555
+}

@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "The credit for the duplicate monthly customer charge on your bill (B-102721-2610) has been sent to a supervisor for approval. A specialist will review it and get back to you shortly. Thank you for your patience!",
- "usage": {
-  "input_tokens": 2869,
-  "output_tokens": 54
- },
- "latency_ms": 12437.8
-}

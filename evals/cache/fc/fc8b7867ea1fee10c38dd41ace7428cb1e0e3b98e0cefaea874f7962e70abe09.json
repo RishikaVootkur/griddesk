@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I've verified your account number and the last four digits of your SSN. To set up a payment plan, I need to check your account balance and past-due amount. Let me look up your account details.",
+ "usage": {
+  "input_tokens": 3806,
+  "output_tokens": 45
+ },
+ "latency_ms": 11890.3
+}

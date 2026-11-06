@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Great, your identity has been verified. Your account number 101219 is associated with the service address 591 Pearson Bypass, Northbrook. Your current balance is $125.00. Would you like to proceed with a payment plan or need further assistance?",
- "usage": {
-  "input_tokens": 2108,
-  "output_tokens": 62
- },
- "latency_ms": 9319.7
-}

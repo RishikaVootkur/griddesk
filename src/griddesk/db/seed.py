@@ -191,6 +191,9 @@ def generate(seed: int = SEED, n_customers: int = N_CUSTOMERS) -> dict[str, list
         new_address()
 
     _outages(rng, out)
+    from griddesk.tools.knowledge import handbook_chunks
+
+    out["kb_chunks"] = handbook_chunks()
     return dict(out)
 
 
@@ -435,6 +438,7 @@ TABLE_ORDER = [
     m.ApprovalRequest,
     m.Escalation,
     m.AuditLog,
+    m.KbChunk,
 ]
 
 

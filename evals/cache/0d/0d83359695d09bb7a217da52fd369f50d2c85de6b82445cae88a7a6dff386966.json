@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Last four of my SSN are 3695.",
+ "usage": {
+  "input_tokens": 605,
+  "output_tokens": 31
+ },
+ "latency_ms": 437.1,
+ "cost_usd": 0.00010934999999999999
+}

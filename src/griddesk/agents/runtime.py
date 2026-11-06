@@ -14,6 +14,7 @@ from griddesk.agents.graph import AgentConfig, AgentSpec, build_graph, neutraliz
 from griddesk.agents.toolbox import Toolbox
 from griddesk.gateway import Gateway
 
+COMMON_TOOLS = ("verify_identity", "escalate_to_human", "search_policy")
 BILLING_TOOLS = (
     "get_account_summary",
     "list_bills",
@@ -23,14 +24,52 @@ BILLING_TOOLS = (
     "dispute_bill",
     "request_meter_check",
 )
-ACCOUNT_TOOLS = ("verify_identity", "escalate_to_human")
+OUTAGE_TOOLS = ("lookup_outage", "report_outage", "get_restoration_estimate")
+ACCOUNT_TOOLS = (
+    "get_account_summary",  # open orders and their dates, for P-22
+    "get_contact_info",
+    "update_contact_info",
+    "set_paperless",
+    "set_autopay",
+    "lookup_address",
+    "start_service",
+    "stop_service",
+    "transfer_service",
+)
 
-Design = Literal["single"]
+Design = Literal["single", "multi"]
 
 
 def agent_specs(design: Design) -> tuple[list[AgentSpec], str]:
-    """The agent line-up for a design. "single" is one agent with every tool."""
-    return [AgentSpec("agent", "billing", ACCOUNT_TOOLS + BILLING_TOOLS, "all customer requests")], "agent"
+    """The agent line-up for a design.
+
+    "single": one agent with every tool. "multi": a triage agent that routes to billing, outages and
+    account specialists, each holding only its own tools (least privilege), with handoffs between them.
+    """
+    if design == "single":
+        tools = tuple(dict.fromkeys(COMMON_TOOLS + BILLING_TOOLS + OUTAGE_TOOLS + ACCOUNT_TOOLS))
+        return [AgentSpec("agent", "all", tools, "all customer requests")], "agent"
+    return [
+        AgentSpec("triage", "triage", ("search_policy", "escalate_to_human"), "routes the customer"),
+        AgentSpec(
+            "billing",
+            "billing",
+            COMMON_TOOLS + BILLING_TOOLS,
+            "balances, bills, charges, late fees, credits, payment plans, disputes",
+        ),
+        AgentSpec(
+            "outages",
+            "outages",
+            COMMON_TOOLS + OUTAGE_TOOLS + ("get_account_summary",),
+            "outage status, outage reports, hazards, restoration estimates",
+        ),
+        AgentSpec(
+            "account",
+            "account",
+            COMMON_TOOLS + ACCOUNT_TOOLS,
+            "contact details, paperless, autopay, start, stop or move service",
+        ),
+    ], "triage"
 
 
 @dataclass

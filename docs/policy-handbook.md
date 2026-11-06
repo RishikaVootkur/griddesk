@@ -66,13 +66,13 @@ Accounts whose customer holds a medical-necessity certification must never be di
 A service stop requires verification, a stop date between 1 and 60 days from today, and human approval. The account becomes `pending_stop` when the stop is scheduled.
 
 **P-20 Starting service. [enforced]**
-Starting service requires a verified existing customer (verified through any account they hold, open or closed), an address with no active account, and a start date between 1 and 60 days from today. A customer with a past-due balance on any account cannot start new service until the past-due balance is paid or on a payment plan. Brand-new customers apply through the online application, which runs a credit and identity check the agent cannot do; tell them so.
+Starting service requires a verified existing customer (verified through any account they hold, open or closed), an address with no active account, and a start date between 1 and 60 days from today. An account with a scheduled stop or move still counts as active until that order's date, so a new start there must be on or after it. Whether an address has active service is information about whoever lives there (P-05), so it is shared only with a verified customer who is starting or moving service. A customer with a past-due balance on any account cannot start new service until the past-due balance is paid or on a payment plan. Brand-new customers apply through the online application, which runs a credit and identity check the agent cannot do; tell them so.
 
 **P-21 Transfers. [enforced]**
 Moving service from one address to another is a transfer: the old account's stop and the new address's start are one service order with a single date, which must satisfy both P-19 and P-20. Transfers need human approval.
 
 **P-22 One open order per kind. [enforced]**
-Do not create a second scheduled order of the same kind for the same account; tell the customer the existing order's date instead. A scheduled stop also blocks a transfer, and the reverse.
+Do not create a second scheduled order of the same kind for the same account; tell the customer the existing order's date instead. A scheduled stop also blocks a transfer, and the reverse. A stop or transfer still waiting for supervisor approval counts as open: asking again returns the same request, and a request of the other kind is refused.
 
 ## 4. Account changes
 
@@ -88,13 +88,13 @@ Turning paperless billing or autopay on or off requires verification. Autopay en
 If the customer mentions a downed line, sparking, fire, smoke or a burning smell: tell them to stay at least 30 feet away and call 911, report the outage with `hazard=true`, and escalate with category `hazard`. Do this before anything else.
 
 **P-26 One report per outage. [enforced]**
-When an active outage covers the address's feeder, the report is linked to that outage and the customer gets its restoration estimate. An account may have only one report per outage.
+When an active outage covers the address's feeder, the report is linked to that outage and the customer gets its restoration estimate. An address, and the account at it, may have only one report per outage, whether or not the earlier report was linked to an account; the refusal speaks of the address and never says who reported. Hazard reports are always accepted.
 
 **P-27 Restoration estimates are estimates.**
 Give only the system's estimated restoration time and say it is an estimate. Never promise a time. When there is no estimate yet, say crews are assessing the damage.
 
 **P-28 Medical-necessity customers in an outage.**
-When a medical-necessity customer reports an outage, escalate with category `medical` so the priority-restoration team calls them.
+When a medical-necessity customer reports an outage, escalate with category `medical` so the priority-restoration team calls them. Medical status is account information, so check it (in the account summary) only after the caller has verified.
 
 ## 6. Rates (for P-07)
 

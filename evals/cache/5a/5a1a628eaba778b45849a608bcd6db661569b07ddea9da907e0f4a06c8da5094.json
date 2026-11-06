@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Sure, I can help with that. Could you please provide your account number and the last name of the account holder?",
- "usage": {
-  "input_tokens": 1862,
-  "output_tokens": 25
- },
- "latency_ms": 2039.0
-}

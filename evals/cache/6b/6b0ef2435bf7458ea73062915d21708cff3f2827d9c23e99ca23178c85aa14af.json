@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I'm sorry to hear that. To prevent disconnection, you can set up a payment plan or make a payment. Let me check your account details to help you further. Please provide your account number and last name.",
- "usage": {
-  "input_tokens": 1858,
-  "output_tokens": 45
- },
- "latency_ms": 21648.4
-}

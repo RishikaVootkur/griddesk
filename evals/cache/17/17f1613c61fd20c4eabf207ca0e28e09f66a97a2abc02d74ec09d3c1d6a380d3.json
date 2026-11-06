@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I need your date of birth or the last four digits of your Social Security Number to proceed. Which would you prefer?",
+ "usage": {
+  "input_tokens": 3741,
+  "output_tokens": 25
+ },
+ "latency_ms": 15884.9
+}

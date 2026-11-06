@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Account number 102720, last name Aguilar.",
+ "usage": {
+  "input_tokens": 536,
+  "output_tokens": 27
+ },
+ "latency_ms": 291.7,
+ "cost_usd": 0.00009659999999999999
+}
