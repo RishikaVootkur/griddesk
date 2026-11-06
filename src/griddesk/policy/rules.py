@@ -14,7 +14,8 @@ it False.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import ROUND_CEILING, Decimal
 from enum import StrEnum
@@ -240,10 +241,15 @@ def check_schedule_date(requested: date, today: date, rule_id: str) -> Decision:
     return ALLOW
 
 
-def check_no_open_order(kind: str, open_order_kinds: tuple[str, ...]) -> Decision:
-    """P-22: at most one scheduled order of each kind per account."""
+def check_no_open_order(
+    kind: str, open_order_kinds: tuple[str, ...], scheduled_on: Mapping[str, date] | None = None
+) -> Decision:
+    """P-22: at most one scheduled order of each kind per account. `scheduled_on` maps an open order's
+    kind to its date, so the refusal can tell the customer the existing order's date."""
     if kind in open_order_kinds:
-        return deny("P-22", f"A {kind} order is already scheduled for this account.")
+        when = (scheduled_on or {}).get(kind)
+        on = f" for {when.isoformat()}" if when else ""
+        return deny("P-22", f"A {kind} order is already scheduled{on} for this account.")
     return ALLOW
 
 
@@ -259,15 +265,24 @@ class StopFacts:
     requested_on: date
     open_order_kinds: tuple[str, ...] = ()
     approved: bool = False  # set only from a matching approved approval_requests row
+    # Date of each open order by kind, for the P-22 refusal message.
+    open_order_dates: Mapping[str, date] = field(default_factory=dict)
+    # Kinds ("stop", "transfer") of other requests for this account still waiting on a supervisor.
+    awaiting_approval_kinds: tuple[str, ...] = ()
 
 
 def _stop_blockers(f: StopFacts, today: date, rule_id: str) -> Decision:
+    for kind in ("stop", "transfer"):
+        d = check_no_open_order(kind, f.open_order_kinds, f.open_order_dates)
+        if not d.allowed:
+            return d
     if f.account_status in {"closed", "pending_stop"}:
         return deny("P-22", "A stop is already scheduled or the account is closed.")
     for kind in ("stop", "transfer"):
-        d = check_no_open_order(kind, f.open_order_kinds)
-        if not d.allowed:
-            return d
+        if kind in f.awaiting_approval_kinds:
+            return deny(
+                "P-22", f"A {kind} request for this account is already waiting for supervisor approval."
+            )
     return check_schedule_date(f.requested_on, today, rule_id)
 
 

@@ -19,6 +19,7 @@ from griddesk.tools.common import ToolContext, run_tool
 AccountId = Annotated[str, Field(description="The customer's account number.")]
 Street = Annotated[str, Field(description="Street address with house number.")]
 Zip = Annotated[str | None, Field(description="5-digit ZIP code, if known.")]
+Unit = Annotated[str | None, Field(description="Apartment or unit, e.g. 'Apt 3', if the building has units.")]
 Day = Annotated[str, Field(description="Date as YYYY-MM-DD.")]
 Category = Literal["billing_dispute", "hazard", "identity_lockout", "medical", "complaint", "other"]
 
@@ -104,12 +105,15 @@ def build_accounts_server(ctx: ToolContext) -> MCPServer:
         return run_tool(service.set_autopay, service.FlagOut, ctx, conversation_id, account_id, enabled)
 
     @server.tool(
-        description="Find a service address id and whether it has active service (never who lives there)."
+        description="For a verified customer starting or moving service: find a service address id and "
+        "whether it has active service (never who lives there)."
     )
     def lookup_address(
-        conversation_id: ConversationId, street: Street, zip_code: Zip = None
+        conversation_id: ConversationId, street: Street, zip_code: Zip = None, unit: Unit = None
     ) -> service.AddressOut:
-        return run_tool(service.lookup_address, service.AddressOut, ctx, conversation_id, street, zip_code)
+        return run_tool(
+            service.lookup_address, service.AddressOut, ctx, conversation_id, street, zip_code, unit
+        )
 
     @server.tool(description="Start service for the verified customer at a vacant address (1-60 days ahead).")
     def start_service(
