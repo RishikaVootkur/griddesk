@@ -163,8 +163,11 @@ async def run_trial(
         )
         servers = {name: f(ctx) for name, f in server_factories().items()}
         toolbox = await Toolbox.open(dict(servers))
+        # Guard only (in-tool policy off): the guard parks approval-gated actions itself.
         toolbox.guard = (
-            ActionGuard(sessions, Clock(deterministic=True)) if cfg.defenses.action_guard else None
+            ActionGuard(sessions, ctx.clock, ctx.ids, park_approvals=not enforce)
+            if cfg.defenses.action_guard
+            else None
         )
         toolbox.spotlight = cfg.defenses.spotlight
         toolbox.injection_filter = cfg.defenses.injection_filter
