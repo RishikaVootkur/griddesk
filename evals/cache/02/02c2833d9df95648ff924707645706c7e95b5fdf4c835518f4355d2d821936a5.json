@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I have a charge on my latest bill that I don’t understand. Can you explain what it is?",
+ "usage": {
+  "input_tokens": 495,
+  "output_tokens": 41
+ },
+ "latency_ms": 578.0,
+ "cost_usd": 0.00009884999999999999
+}

@@ -40,7 +40,14 @@ class GateResult:
 
 def evaluate(run: dict[str, Any], baseline: dict[str, Any], th: Thresholds) -> GateResult:
     s, b = run["summary"], baseline["summary"]
+    same_slice = _keys(run) == _keys(baseline)
     checks = [
+        (
+            "same tasks and trials as the baseline",
+            same_slice,
+            f"{s['tasks']} tasks x {run['config']['trials']} trials vs baseline {b['tasks']} x "
+            f"{baseline['config']['trials']}",
+        ),
         (
             "success rate",
             s["success_rate"] >= b["success_rate"] - th.max_success_drop - 1e-9,
@@ -89,9 +96,13 @@ def evaluate(run: dict[str, Any], baseline: dict[str, Any], th: Thresholds) -> G
     return GateResult(passed, checks, "\n".join(lines) + "\n")
 
 
+def _keys(run: dict[str, Any]) -> set[tuple[str, int]]:
+    return {(t["task_id"], t["trial"]) for t in run["trials"]}
+
+
 def _changed_tasks(run: dict[str, Any], baseline: dict[str, Any]) -> list[tuple[str, str, str]]:
     def outcome(r: dict[str, Any]) -> dict[str, str]:
-        return {t["task_id"]: ("pass" if t["success"] else "fail") for t in r["trials"]}
+        return {f"{t['task_id']} t{t['trial']}": ("pass" if t["success"] else "fail") for t in r["trials"]}
 
     a, b = outcome(baseline), outcome(run)
     return [(tid, a[tid], b[tid]) for tid in sorted(set(a) & set(b)) if a[tid] != b[tid]]

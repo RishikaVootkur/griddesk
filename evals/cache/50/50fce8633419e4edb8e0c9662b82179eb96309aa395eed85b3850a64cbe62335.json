@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "My latest bill is a lot higher than usual. I'm worried the meter might not have been read correctly. Can you help check it?",
+ "usage": {
+  "input_tokens": 476,
+  "output_tokens": 55
+ },
+ "latency_ms": 621.8,
+ "cost_usd": 0.00010439999999999999
+}

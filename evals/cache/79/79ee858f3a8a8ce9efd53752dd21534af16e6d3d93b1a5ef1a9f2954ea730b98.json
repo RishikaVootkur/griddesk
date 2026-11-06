@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I appreciate your understanding. Since I don't have the exact amount or the bill ID, I can't process the late fee waiver at this time. Could you please provide the bill ID or the exact amount of the late fee so I can assist you further?",
+ "usage": {
+  "input_tokens": 2549,
+  "output_tokens": 53
+ },
+ "latency_ms": 12936.4
+}

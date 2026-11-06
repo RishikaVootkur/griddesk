@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Great! Your identity has been verified. I see your account number 100007 is associated with the service address 692 Chelsea Pine, Fairhaven Heights. Could you please provide the bill ID or the date of the latest bill you're referring to?",
+ "usage": {
+  "input_tokens": 2140,
+  "output_tokens": 57
+ },
+ "latency_ms": 7709.9
+}

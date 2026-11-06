@@ -1,0 +1,18 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_sjushodi",
+   "name": "verify_identity",
+   "arguments": {
+    "last_name": "Gardner",
+    "account_id": "100166"
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 1911,
+  "output_tokens": 35
+ },
+ "latency_ms": 2863.3
+}
