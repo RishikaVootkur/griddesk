@@ -13,6 +13,7 @@ set, so traces never hold raw personal data. When tracing is not configured the 
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
@@ -20,15 +21,17 @@ from typing import Any
 from opentelemetry import trace
 from opentelemetry.trace import Span, Status, StatusCode
 
-from griddesk.logging import redact_value
+from griddesk.logging import redact_text, redact_value
 
 TRACER_NAME = "griddesk"
 _configured = False
+_provider: Any = None
+_DIGITS = re.compile(r"\d")
 
 
 def setup_tracing(endpoint: str, service_name: str = "griddesk") -> None:
     """Send spans to an OTLP/HTTP collector such as Phoenix (http://localhost:6006/v1/traces)."""
-    global _configured
+    global _configured, _provider
     if _configured:
         return
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -39,7 +42,26 @@ def setup_tracing(endpoint: str, service_name: str = "griddesk") -> None:
     provider = TracerProvider(resource=Resource.create({"service.name": service_name}))
     provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint)))
     trace.set_tracer_provider(provider)
+    _provider = provider
     _configured = True
+
+
+def shutdown_tracing() -> None:
+    """Flush and stop the span exporter, so the last spans before a stop are not lost."""
+    global _provider
+    if _provider is not None:
+        _provider.shutdown()
+        _provider = None
+
+
+def trace_text(text: str, limit: int = 1000) -> str:
+    """Conversation text as it may appear in a trace.
+
+    The PII redactor catches full SSNs, cards, emails and phone numbers, but not the identity answers
+    customers give in chat ("last four are 1234", a date of birth, an account number). So after
+    redaction every digit is masked too: traces keep the shape of the text, never the numbers.
+    """
+    return _DIGITS.sub("#", redact_text(text[: limit * 2]))[:limit]
 
 
 def tracer() -> trace.Tracer:
@@ -110,6 +132,6 @@ def record_llm_call(
             "griddesk.cost_usd_list_price_equivalent": round(cost_usd, 8),
             "griddesk.cache_hit": cached,
             "griddesk.attempts": attempts,
-            "output.value": output_preview[:500],
+            "output.value": trace_text(output_preview, 500),
         },
     )
