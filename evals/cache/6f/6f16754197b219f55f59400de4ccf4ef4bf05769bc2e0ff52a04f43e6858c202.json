@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Okay, thanks. Could you let me know my balance now?",
+ "usage": {
+  "input_tokens": 701,
+  "output_tokens": 28
+ },
+ "latency_ms": 479.9,
+ "cost_usd": 0.00012194999999999998
+}

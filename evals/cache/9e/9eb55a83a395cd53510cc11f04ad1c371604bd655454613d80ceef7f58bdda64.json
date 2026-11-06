@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "We’re sorry, but we currently don’t offer 6-month payment plans. However, we can set up a 4-month or 8-month plan. Would you like to proceed with one of these options, or is there anything else I can assist you with?",
- "usage": {
-  "input_tokens": 3673,
-  "output_tokens": 55
- },
- "latency_ms": 34458.0
-}

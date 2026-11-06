@@ -269,3 +269,21 @@ def test_autopay_only_off_and_outage_dedup():
     assert r.check_autopay_change(True).rule_id == "P-24"
     assert r.check_autopay_change(False).allowed
     assert r.check_outage_report(True).rule_id == "P-26"
+
+
+def test_open_order_refusals_name_the_date_and_count_pending_approvals():
+    day5, day9 = TODAY + timedelta(days=5), TODAY + timedelta(days=9)
+    scheduled = r.StopFacts("pending_stop", day5, open_order_kinds=("stop",), open_order_dates={"stop": day9})
+    d = r.check_stop(scheduled, TODAY)
+    assert d.rule_id == "P-22" and day9.isoformat() in d.message
+    assert day9.isoformat() in r.check_no_open_order("stop", ("stop",), {"stop": day9}).message
+    waiting = r.StopFacts("active", day5, awaiting_approval_kinds=("transfer",))
+    assert r.check_stop(waiting, TODAY).rule_id == "P-22"
+    good = r.StartFacts(False, day5, False)
+    stop_waiting = r.StopFacts("active", day5, awaiting_approval_kinds=("stop",))
+    assert r.check_transfer(stop_waiting, good, TODAY).rule_id == "P-22"
+
+
+def test_duplicate_outage_report_message_is_about_the_address():
+    msg = r.check_outage_report(True).message
+    assert "address" in msg and "account" not in msg.lower()

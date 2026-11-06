@@ -28,7 +28,7 @@ from griddesk.logging import redact_value
 from griddesk.policy.rules import Decision, Outcome, check_account_access
 from griddesk.runtime import Clock, IdGenerator
 
-ErrorCode = Literal["policy_denied", "needs_approval", "not_found", "invalid_request", "budget"]
+ErrorCode = Literal["policy_denied", "needs_approval", "not_found", "invalid_request", "ambiguous", "budget"]
 
 
 class ToolError(BaseModel):
@@ -134,8 +134,19 @@ def enforce(
         )
         s.commit()
         raise PolicyStop(ToolError(code="policy_denied", message=decision.message, rule_id=decision.rule_id))
-    # Needs approval: park it.
+    # Needs approval: park it, unless the same request is already waiting (a retry must not queue a
+    # duplicate for the supervisor).
     assert account_id is not None
+    existing = pending_approval(s, conversation_id, account_id, action, arguments)
+    if existing is not None:
+        raise PolicyStop(
+            ToolError(
+                code="needs_approval",
+                message=f"{decision.message} Already sent to a supervisor; still waiting for a decision.",
+                rule_id=decision.rule_id,
+            ),
+            approval_request_id=existing.id,
+        )
     req = m.ApprovalRequest(
         id=ctx.ids.new("APR"),
         conversation_id=conversation_id,
@@ -167,6 +178,24 @@ def enforce(
         ),
         approval_request_id=req.id,
     )
+
+
+def pending_approval(
+    s: Session, conversation_id: str, account_id: str, action: str, arguments: Mapping[str, Any]
+) -> m.ApprovalRequest | None:
+    """The pending request in this conversation for exactly this account, action and arguments, if any."""
+    want = _jsonable(dict(arguments))
+    rows = s.scalars(
+        select(m.ApprovalRequest)
+        .where(
+            m.ApprovalRequest.conversation_id == conversation_id,
+            m.ApprovalRequest.account_id == account_id,
+            m.ApprovalRequest.action == action,
+            m.ApprovalRequest.status == "pending",
+        )
+        .order_by(m.ApprovalRequest.requested_at, m.ApprovalRequest.id)
+    )
+    return next((r for r in rows if r.arguments == want), None)
 
 
 def require_account(

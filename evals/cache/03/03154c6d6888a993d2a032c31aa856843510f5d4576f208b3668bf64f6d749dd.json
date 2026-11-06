@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "You're all set! Our specialist will reach out to you shortly to discuss the next steps. If you have any other questions in the meantime, feel free to ask. Have a great day! 😊",
+ "usage": {
+  "input_tokens": 4410,
+  "output_tokens": 42
+ },
+ "latency_ms": 46259.1
+}

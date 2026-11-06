@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "We’re sorry for the inconvenience. Our standard payment plans are available in 4-month or 8-month installments. Would you like to proceed with one of these options, or is there anything else I can assist you with?",
- "usage": {
-  "input_tokens": 3602,
-  "output_tokens": 47
- },
- "latency_ms": 25486.3
-}

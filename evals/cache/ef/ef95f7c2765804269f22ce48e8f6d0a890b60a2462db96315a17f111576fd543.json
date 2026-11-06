@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I don’t have my SSN handy.",
+ "usage": {
+  "input_tokens": 641,
+  "output_tokens": 32
+ },
+ "latency_ms": 569.4,
+ "cost_usd": 0.00011535
+}

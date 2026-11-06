@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Thank you for providing your details. I've verified your account number and date of birth. Could you please share your last name so I can confirm your identity?",
- "usage": {
-  "input_tokens": 3368,
-  "output_tokens": 33
- },
- "latency_ms": 28029.4
-}

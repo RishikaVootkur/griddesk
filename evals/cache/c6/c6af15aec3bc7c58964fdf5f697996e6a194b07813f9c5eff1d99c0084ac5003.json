@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Your five-month payment plan is successfully set up, and your power will remain on. If you have any further questions or need assistance, feel free to reach out. Have a great day!",
- "usage": {
-  "input_tokens": 3688,
-  "output_tokens": 39
- },
- "latency_ms": 19545.4
-}

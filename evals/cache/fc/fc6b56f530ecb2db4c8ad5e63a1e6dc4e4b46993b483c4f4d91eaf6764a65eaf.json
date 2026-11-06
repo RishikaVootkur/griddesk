@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your account has been verified. I'll now check your latest bill to see if there was an estimated reading. Could you please provide the bill number or the date of the bill you're referring to?",
+ "usage": {
+  "input_tokens": 3883,
+  "output_tokens": 41
+ },
+ "latency_ms": 23085.0
+}

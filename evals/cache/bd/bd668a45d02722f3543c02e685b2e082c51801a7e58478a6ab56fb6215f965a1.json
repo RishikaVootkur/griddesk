@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "To set up a payment plan, I need to verify your identity. Could you please provide your account number, last name, and either your date of birth or the last four digits of your Social Security Number?",
+ "usage": {
+  "input_tokens": 3612,
+  "output_tokens": 43
+ },
+ "latency_ms": 23618.8
+}

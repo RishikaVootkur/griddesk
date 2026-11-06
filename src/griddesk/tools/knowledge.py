@@ -6,8 +6,8 @@ how prompt injection inside retrieved text is tested.
 
 Retrieval is hybrid: BM25 over tokens and cosine similarity over `nomic-embed-text` embeddings from
 local Ollama, fused with reciprocal rank fusion (RRF, k=60). Embeddings are cached on disk by content
-hash and committed, so CI can replay without Ollama; without an embedding the search falls back to
-BM25 alone and says so.
+hash and committed, so CI can replay without Ollama. Without a query embedding the search falls back
+to BM25 alone and says so; chunks without a document embedding are ranked by BM25 only.
 """
 
 from __future__ import annotations
@@ -15,7 +15,9 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import re
+import tempfile
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -107,9 +109,9 @@ class Embedder:
         """`kind` is "document" or "query" (nomic uses task prefixes). None when unavailable."""
         prefix = "search_document" if kind == "document" else "search_query"
         path = self._path(prefix, text)
-        if path.exists():
-            data: list[float] = json.loads(path.read_text())
-            return data
+        cached = _read_vector(path)
+        if cached is not None:
+            return cached
         if not self.allow_live:
             return None
         try:
@@ -118,9 +120,32 @@ class Embedder:
             vec = [round(float(x), 5) for x in r.json()["embeddings"][0]]
         except (httpx.HTTPError, KeyError, IndexError, ValueError):
             return None
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(vec, separators=(",", ":")))
+        _write_atomic(path, json.dumps(vec, separators=(",", ":")))
         return vec
+
+
+def _read_vector(path: Path) -> list[float] | None:
+    """A cached vector, or None when the file is missing or unreadable (treated as a cache miss)."""
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, list) or not data or not all(isinstance(x, int | float) for x in data):
+        return None
+    return [float(x) for x in data]
+
+
+def _write_atomic(path: Path, text: str) -> None:
+    """Write via a temp file and rename, so a concurrent reader never sees a half-written vector."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 _embedder: Embedder | None = None
@@ -144,9 +169,12 @@ def hybrid_search(
     qv = embedder.embed(query, "query")
     if qv is not None:
         dvs = [embedder.embed(f"{c.title}. {c.text}", "document") for c in chunks]
-        if all(v is not None for v in dvs):
-            sims = [cosine(qv, v) for v in dvs if v is not None]
-            rankings.append(sorted(range(len(chunks)), key=lambda i: (-sims[i], chunks[i].id))[:20])
+        # Rank the dense list over the chunks that have a vector. One chunk without one (say a planted
+        # document that is not in the cache) still competes through BM25 and does not switch the whole
+        # query to BM25.
+        sims = {i: cosine(qv, v) for i, v in enumerate(dvs) if v is not None and len(v) == len(qv)}
+        if sims:
+            rankings.append(sorted(sims, key=lambda i: (-sims[i], chunks[i].id))[:20])
             mode = "hybrid"
     fused = rrf(rankings)
     top = sorted(fused, key=lambda i: (-fused[i], chunks[i].id))[:k]
