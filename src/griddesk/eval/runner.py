@@ -39,7 +39,7 @@ from griddesk.eval.tasks import Task
 from griddesk.gateway import Gateway
 from griddesk.guardrails import Defenses
 from griddesk.guardrails.action_guard import ActionGuard
-from griddesk.logging import regex_redact
+from griddesk.logging import redact_text
 from griddesk.mcp_servers import server_factories
 from griddesk.runtime import Clock, IdGenerator
 from griddesk.tools import approvals
@@ -284,7 +284,7 @@ async def run_trial(
         turn_latencies_ms=latencies,
         cache_hits=sum(r.cached for r in recs),
         llm_calls=len(recs),
-        transcript=[{"speaker": sp, "text": regex_redact(t)} for sp, t in transcript],
+        transcript=[{"speaker": sp, "text": redact_text(t)} for sp, t in transcript],
         state_mismatch=mismatch(actual, expected),
         actual_diff=diff_to_json(actual),
         handoffs=list(toolbox.handoffs),
