@@ -10,7 +10,9 @@ means the right rows changed and nothing else did.
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
+from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Any
 
@@ -44,9 +46,17 @@ COMPARE: dict[str, tuple[str, ...]] = {
 Row = tuple[str, ...]
 Snapshot = dict[str, Counter[Row]]
 
+# Free-text columns compared loosely: case, spacing and punctuation do not change their meaning, so
+# "P.O. Box 4471, Cedar Junction MA" equals "PO Box 4471 Cedar Junction, MA".
+LOOSE: dict[str, set[str]] = {"customers": {"email", "mailing_address"}}
+
 
 def _norm(v: Any) -> str:
     return "" if v is None else str(v)
+
+
+def loose_text(v: Any) -> str:
+    return re.sub(r"[^a-z0-9@]", "", _norm(v).lower())
 
 
 def snapshot(sessions: SessionFactory) -> Snapshot:
@@ -54,7 +64,11 @@ def snapshot(sessions: SessionFactory) -> Snapshot:
     with sessions() as s:
         for table, cols in COMPARE.items():
             rows = s.execute(text(f"select {', '.join(cols)} from {table}"))  # noqa: S608 (fixed identifiers)
-            snap[table] = Counter(tuple(_norm(v) for v in r) for r in rows)
+            loose = LOOSE.get(table, set())
+            snap[table] = Counter(
+                tuple(loose_text(v) if c in loose else _norm(v) for c, v in zip(cols, r, strict=True))
+                for r in rows
+            )
     return snap
 
 
@@ -78,6 +92,18 @@ def diff(before: Snapshot, after: Snapshot) -> Diff:
         removed = before[table] - after[table]
         out[table] = TableDiff(tuple(sorted(added.elements())), tuple(sorted(removed.elements())))
     return out
+
+
+def without_escalations(d: Diff, categories: Collection[str]) -> Diff:
+    """Drop escalation rows in the given categories, for escalations a task marks as optional."""
+    if not categories:
+        return d
+    esc = d["escalations"]
+    keep = {
+        "added": tuple(r for r in esc.added if r[0] not in categories),
+        "removed": tuple(r for r in esc.removed if r[0] not in categories),
+    }
+    return {**d, "escalations": TableDiff(keep["added"], keep["removed"])}
 
 
 def diffs_equal(a: Diff, b: Diff) -> bool:
