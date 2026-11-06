@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Account number 100021, last name Lopez, date of birth 1983-02-02.",
+ "usage": {
+  "input_tokens": 537,
+  "output_tokens": 49
+ },
+ "latency_ms": 510.8,
+ "cost_usd": 0.00010994999999999999
+}

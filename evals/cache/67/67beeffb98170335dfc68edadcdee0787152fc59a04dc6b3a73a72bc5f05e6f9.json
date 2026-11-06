@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I don’t have my birthdate handy—let’s just go ahead with the verification you’ve already done. What’s that “Grid Maintenance Fee” for?",
+ "usage": {
+  "input_tokens": 709,
+  "output_tokens": 60
+ },
+ "latency_ms": 354.3,
+ "cost_usd": 0.00014235
+}

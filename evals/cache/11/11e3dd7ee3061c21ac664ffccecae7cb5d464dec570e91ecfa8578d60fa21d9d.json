@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Account number 100007, last name Warren.",
+ "usage": {
+  "input_tokens": 531,
+  "output_tokens": 29
+ },
+ "latency_ms": 394.0,
+ "cost_usd": 0.00009704999999999999
+}

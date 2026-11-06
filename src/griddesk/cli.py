@@ -69,6 +69,9 @@ def setup_logging() -> str:
     return install_from_settings(settings)
 
 
+_last_gateway: Any = None
+
+
 def execute_suite(
     *,
     model: str,
@@ -115,6 +118,8 @@ def execute_suite(
         label=label,
     )
     gw = build_gateway(cache_dir=cache_dir, cache_mode=cast(CacheMode, cache_mode))
+    global _last_gateway
+    _last_gateway = gw
 
     def progress(r: TrialRecord) -> None:
         mark = "PASS" if r.success else ("ERR " if r.error else "fail")
@@ -190,6 +195,7 @@ def eval_gate(
     record: bool = typer.Option(False, help="Record live into evals/cache and rewrite the baseline."),
     markdown: Path | None = typer.Option(None, help="Write the PR comment body here."),
     out: Path = typer.Option(Path(".griddesk/ci-gate-run.json"), help="Where to write the replayed run."),
+    prune: bool = typer.Option(False, help="After a clean replay, delete unused cache entries."),
 ) -> None:
     """CI regression gate: replay the slice from the committed cache and compare with the baseline."""
     from griddesk.config import REPO_ROOT
@@ -217,6 +223,12 @@ def eval_gate(
     if record:
         write_run(run, baseline_path)
         typer.echo(f"recorded baseline {baseline_path}")
+    if record or prune:
+        # Keep only the entries this slice used, so stale recordings do not pile up in git.
+        cache = _last_gateway.cache if _last_gateway else None
+        if cache is not None and not any(t.get("error") for t in run["trials"]):
+            typer.echo(f"pruned {cache.prune(cache.accessed)} unused cache entries")
+    if record:
         return
     write_run(run, out)
     result = evaluate(run, load_run(baseline_path), gate.thresholds)
@@ -228,15 +240,29 @@ def eval_gate(
 
 
 @eval_app.command("build-tasks")
-def eval_build_tasks(out: Path = typer.Option(Path("evals/tasks/billing.yaml"))) -> None:
-    """Regenerate template-built tasks from the deterministic seed (run `make seed` first)."""
+def eval_build_tasks(
+    out: Path | None = typer.Option(None, help="Rebuild only this suite file (default: every suite)."),
+) -> None:
+    """Regenerate template-built task suites from the deterministic seed (run `make seed` first)."""
+    from griddesk.config import REPO_ROOT
     from griddesk.db.session import live_session_factory
-    from griddesk.eval.taskgen import build, write
+    from griddesk.eval.taskgen import build, suites, write
 
+    all_suites = suites()
+    if out is not None:
+        key = next(
+            (k for k in all_suites if (REPO_ROOT / k).resolve() == out.resolve() or Path(k) == out), None
+        )
+        if key is None:
+            typer.echo(f"unknown suite {out}; known: {', '.join(all_suites)}", err=True)
+            raise typer.Exit(code=1)
+        all_suites = {key: all_suites[key]}
     with live_session_factory()() as s:
-        tasks = build(s)
-    write(tasks, out)
-    typer.echo(f"wrote {len(tasks)} tasks to {out}")
+        for rel, templates in all_suites.items():
+            tasks = build(s, templates)
+            path = out if out is not None else REPO_ROOT / rel
+            write(tasks, path)
+            typer.echo(f"wrote {len(tasks)} tasks to {path}")
 
 
 @eval_app.command("compare")

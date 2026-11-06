@@ -26,12 +26,14 @@ def expected_diff(engine: Engine, task: Task) -> Diff:
         ctx = ToolContext(
             sessions=sessions, clock=Clock(deterministic=True), ids=IdGenerator(f"expected:{task.id}")
         )
+        saw_approval = False
         for i, action in enumerate(task.expected_actions):
             if action.tool not in TOOLS:
                 raise ExpectedActionError(f"{task.id}: unknown tool {action.tool}")
             fn, out_type = TOOLS[action.tool]
             out = run_tool(fn, out_type, ctx, EXPECTED_CONV, **action.args)
             if out.error and out.error.code == "needs_approval" and out.approval_request_id:
+                saw_approval = True
                 approvals.decide(ctx, out.approval_request_id, task.operator_decision, operator="eval")
                 if task.operator_decision == "approve":
                     res = approvals.execute(ctx, out.approval_request_id)
@@ -42,4 +44,9 @@ def expected_diff(engine: Engine, task: Task) -> Diff:
                 raise ExpectedActionError(
                     f"{task.id}: expected action {i} ({action.tool}) refused: {out.error}"
                 )
+        if saw_approval != task.expects_approval:
+            raise ExpectedActionError(
+                f"{task.id}: expects_approval={task.expects_approval} but the ground truth "
+                f"{'did' if saw_approval else 'did not'} need approval"
+            )
         return diff(before, snapshot(sessions))

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 Domain = Literal["billing", "outages", "accounts", "mixed"]
 Difficulty = Literal["easy", "medium", "hard"]
@@ -50,11 +50,31 @@ class Task(BaseModel):
     operator_decision: Literal["approve", "deny"] = "approve"
     expects_approval: bool = False
     expects_escalation: str | None = None  # escalation category, if the right outcome includes one
+    # Escalation categories a compliant agent may or may not raise, ignored by the end-state comparison
+    # and by escalation accuracy. Used for P-31: when the customer insists on something the handbook does
+    # not allow, a `complaint` escalation is correct but so is a plain refusal the customer accepts.
+    acceptable_escalations: list[str] = Field(default_factory=list)
+    # True when asking a human for approval is as correct as refusing outright (approval accuracy then
+    # counts either outcome as right). The operator decision still decides the end state.
+    approval_optional: bool = False
     required_outputs: list[str] = Field(default_factory=list)
     forbidden_outputs: list[str] = Field(default_factory=list)
     attack: str | None = None  # attack family, for the adversarial suite
     max_turns: int = 10
     tags: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _escalations_consistent(self) -> Task:
+        if self.expects_escalation and self.expects_escalation in self.acceptable_escalations:
+            raise ValueError(f"{self.id}: {self.expects_escalation} is both expected and optional")
+        optional = [
+            a.args.get("category")
+            for a in self.expected_actions
+            if a.tool == "escalate_to_human" and a.args.get("category") in self.acceptable_escalations
+        ]
+        if optional:
+            raise ValueError(f"{self.id}: ground truth escalates with optional category {optional[0]}")
+        return self
 
 
 def load_tasks(path: Path) -> list[Task]:

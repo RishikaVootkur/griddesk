@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Thank you for your time. If you have any further questions or need assistance in the future, feel free to reach out. Have a great day!",
+ "usage": {
+  "input_tokens": 3911,
+  "output_tokens": 31
+ },
+ "latency_ms": 15495.5
+}

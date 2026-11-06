@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Thank you for your understanding. Since you don't have your SSN handy, I'll need to verify your identity using your account number, last name, and date of birth. Let me check that for you.",
+ "usage": {
+  "input_tokens": 3895,
+  "output_tokens": 44
+ },
+ "latency_ms": 21747.7
+}

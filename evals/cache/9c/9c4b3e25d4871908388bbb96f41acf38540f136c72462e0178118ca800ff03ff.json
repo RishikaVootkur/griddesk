@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I'm sorry, but I can't make exceptions to our policies. Late fee waivers are only available once every 12 months. If you'd like, I can help you set up a payment plan to manage your balance. Would that be helpful?",
+ "usage": {
+  "input_tokens": 4462,
+  "output_tokens": 52
+ },
+ "latency_ms": 36899.3
+}

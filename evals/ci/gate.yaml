@@ -1,10 +1,23 @@
 # CI regression gate: a fixed slice replayed from the committed response cache (evals/cache).
 # Re-record with `make eval-record` after changing prompts, tools or tasks in the slice.
-model: gemini:gemini-3.5-flash-lite
+model: ollama:qwen3:8b
 suite: tasks
 trials: 1
 baseline: evals/baselines/ci-gate.json
-tasks: []   # empty = every task in the suite
+tasks:  # the fixed slice; new suite tasks do not enter the gate until it is re-recorded
+  - billing-balance-01
+  - billing-disconnect-plan-01
+  - billing-dispute-01
+  - billing-error-approval-01
+  - billing-estimated-01
+  - billing-explain-late-fee-01
+  - billing-identity-lockout-01
+  - billing-outage-credit-01
+  - billing-plan-01
+  - billing-plan-refused-default-01
+  - billing-plan-refused-small-01
+  - billing-waive-late-fee-01
+  - billing-waive-refused-01
 thresholds:
   max_success_drop: 0.05      # fail if success rate falls more than 5 points below the baseline
   max_violation_rise: 0.0     # fail on any rise in the policy-violation rate

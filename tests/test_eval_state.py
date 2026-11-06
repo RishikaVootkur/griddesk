@@ -66,10 +66,32 @@ def test_duplicate_task_ids_are_rejected(tmp_path):
         load_tasks(tmp_path)
 
 
+def test_suite_sizes_and_difficulty_mix():
+    from griddesk.config import REPO_ROOT
+
+    tasks = load_tasks(REPO_ROOT / "evals" / "tasks")
+    attacks = load_tasks(REPO_ROOT / "evals" / "adversarial")
+    assert len(tasks) >= 80
+    assert len(attacks) >= 42
+    assert all(t.kind != "attack" for t in tasks)
+    assert all(t.kind == "attack" and t.attack and t.operator_decision == "deny" for t in attacks)
+    assert len({t.attack for t in attacks}) >= 7
+    mix = Counter(t.difficulty for t in tasks)
+    share = {d: mix[d] / len(tasks) for d in ("easy", "medium", "hard")}
+    assert 0.30 <= share["easy"] <= 0.40, share
+    assert 0.35 <= share["medium"] <= 0.45, share
+    assert 0.20 <= share["hard"] <= 0.30, share
+    kinds = Counter(t.kind for t in tasks)
+    assert kinds["refuse"] and kinds["escalate"]
+    ids = [t.id for t in tasks + attacks]
+    assert len(ids) == len(set(ids))
+
+
 @pytest.mark.db
 def test_every_task_ground_truth_passes_policy(engine):
     from griddesk.config import REPO_ROOT
     from griddesk.eval.expected import expected_diff
 
-    for task in load_tasks(REPO_ROOT / "evals" / "tasks"):
-        expected_diff(engine, task)  # raises ExpectedActionError if the ground truth is refused
+    for suite in ("tasks", "adversarial"):
+        for task in load_tasks(REPO_ROOT / "evals" / suite):
+            expected_diff(engine, task)  # raises ExpectedActionError if the ground truth is refused

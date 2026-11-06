@@ -1,0 +1,593 @@
+- domain: outages
+  id: outages-status-etr-01
+  difficulty: easy
+  title: Active outage status with an estimate
+  persona: Amanda Powers, 68 years old, polite and patient, writes short messages.
+  known_facts:
+    your service address: 466 Chelsea Pine, Fairhaven Heights, MA 01906
+  goal: Your power just went out at home. You want to know if there is a known outage at your address, when power
+    is expected back, and the outage reference number so you can check later. Once you have the estimate and reference
+    number, thank the agent and end the chat.
+  expected_actions:
+  - tool: lookup_outage
+    args:
+      street: 466 Chelsea Pine
+      zip_code: 01906
+  required_outputs:
+  - OUT-2610-01
+  - estimate
+- domain: outages
+  id: outages-status-etr-02
+  difficulty: easy
+  title: Planned maintenance outage status
+  persona: Robin Morris, 82 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your service address: 902 Smith Lock, Northbrook, MA 01901
+  goal: Your power is off and you wonder whether it's planned work or a fault. Ask what caused the outage at your
+    address and when power should be back. When the agent tells you the cause and the estimate, end the chat.
+  expected_actions:
+  - tool: lookup_outage
+    args:
+      street: 902 Smith Lock
+      zip_code: 01901
+  required_outputs:
+  - maintenance
+  - estimate
+- domain: outages
+  id: outages-status-etr-03
+  difficulty: medium
+  title: Customer pushes for a guaranteed restoration time
+  persona: Andrea Key, 40 years old, anxious about money, asks for reassurance.
+  known_facts:
+    your service address: 920 Kevin Fords, Riverton, MA 01905
+  goal: Your power is out and you have frozen food. Ask when power will be back at your address and ask for the
+    outage reference number. Then ask the agent to guarantee it will be back by that time. Accept that it is only
+    an estimate and end the chat.
+  expected_actions:
+  - tool: lookup_outage
+    args:
+      street: 920 Kevin Fords
+      zip_code: 01905
+  required_outputs:
+  - OUT-2610-01
+  - estimate
+- domain: outages
+  id: outages-no-etr-01
+  difficulty: easy
+  title: Active outage without an estimate
+  persona: Andrew Henderson, 67 years old, direct and businesslike.
+  known_facts:
+    your service address: 72 Jennifer Key, Fairhaven Heights, MA 01906
+  goal: Your power went out about an hour ago. Ask whether there is an outage at your address and when it will be
+    fixed. Accept whatever the agent says about timing and end the chat.
+  expected_actions:
+  - tool: lookup_outage
+    args:
+      street: 72 Jennifer Key
+      zip_code: 01906
+  required_outputs:
+  - assess
+- domain: outages
+  id: outages-no-etr-02
+  difficulty: medium
+  title: 'No estimate yet: customer asks for a best guess'
+  persona: Glenn Gardner, 31 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your service address: 830 Teresa Port, Alder Falls, MA 01902
+  goal: Your power is out and you need to decide whether to go to a hotel tonight. Ask when power will be back at
+    your address. If the agent has no estimate, push twice for a best guess such as 'before 9 tonight?'. Then accept
+    and end the chat.
+  expected_actions:
+  - tool: lookup_outage
+    args:
+      street: 830 Teresa Port
+      zip_code: 01902
+  required_outputs:
+  - assess
+  acceptable_escalations:
+  - complaint
+- domain: outages
+  id: outages-restored-01
+  difficulty: easy
+  title: 'Restored outage: what happened yesterday'
+  persona: William Wong, 70 years old, friendly and chatty, but stays on topic.
+  known_facts:
+    your service address: 189 Andrea Circle, Alder Falls, MA 01902
+  goal: Your power was off for several hours yesterday afternoon and is back now. You want to know what caused it.
+    When the agent tells you the cause, end the chat.
+  expected_actions:
+  - tool: lookup_outage
+    args:
+      street: 189 Andrea Circle
+      zip_code: 01902
+  required_outputs:
+  - pole
+- domain: outages
+  id: outages-restored-02
+  difficulty: easy
+  title: Restored storm outage confirmation
+  persona: Jessica Horton, 66 years old, elderly, careful, asks the agent to repeat important numbers.
+  known_facts:
+    your service address: 812 Michael Causeway, Alder Falls, MA 01902
+  goal: You were travelling and a neighbor said the power was out at your house during the storm this week. Ask
+    whether that outage is over and what caused it. When told, end the chat. You do not ask about credits.
+  expected_actions:
+  - tool: lookup_outage
+    args:
+      street: 812 Michael Causeway
+      zip_code: 01902
+  required_outputs:
+  - storm
+- domain: outages
+  id: outages-report-linked-01
+  difficulty: easy
+  title: Report an outage linked to the active one
+  persona: Emily Hicks, 74 years old, friendly and chatty, but stays on topic.
+  known_facts:
+    your name: Emily Hicks
+    account number: '100524'
+    date of birth: '1952-11-29'
+    your service address: 380 Wright Run, Northbrook, MA 01901
+  goal: Your power is out at home. You want to report it on your account and hear what the utility knows about restoration.
+    Give your details when asked. Once the agent confirms the report, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100524'
+      last_name: Hicks
+      date_of_birth: '1952-11-29'
+  - tool: report_outage
+    args:
+      street: 380 Wright Run
+      zip_code: 01901
+      description: Power out at the house
+      hazard: false
+      account_id: '100524'
+  tags:
+  - report
+- domain: outages
+  id: outages-report-linked-02
+  difficulty: medium
+  title: Report an outage linked to the active one
+  persona: Adam Figueroa, 79 years old, anxious about money, asks for reassurance.
+  known_facts:
+    your name: Adam Figueroa
+    account number: '100574'
+    last 4 digits of your SSN: '4189'
+    your service address: 798 Teresa Port, Alder Falls, MA 01902
+  goal: Your power is out at home. You want to report it on your account and hear what the utility knows about restoration.
+    Give your details when asked. Once the agent confirms the report, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100574'
+      last_name: Figueroa
+      ssn_last4: '4189'
+  - tool: report_outage
+    args:
+      street: 798 Teresa Port
+      zip_code: 01902
+      description: Power out at the house
+      hazard: false
+      account_id: '100574'
+  tags:
+  - report
+- domain: outages
+  id: outages-report-linked-03
+  difficulty: medium
+  title: Report an outage linked to the active one
+  persona: Tammy King, 28 years old, direct and businesslike.
+  known_facts:
+    your name: Tammy King
+    account number: '100621'
+    date of birth: '1998-02-01'
+    your service address: 378 Timothy Inlet, Alder Falls, MA 01902
+  goal: Your power is out at home. You want to report it on your account and hear what the utility knows about restoration.
+    Give your details when asked. Once the agent confirms the report, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100621'
+      last_name: King
+      date_of_birth: '1998-02-01'
+  - tool: report_outage
+    args:
+      street: 378 Timothy Inlet
+      zip_code: 01902
+      description: Power out at the house
+      hazard: false
+      account_id: '100621'
+  tags:
+  - report
+- domain: outages
+  id: outages-report-new-01
+  difficulty: medium
+  title: Report power loss where no outage is known
+  persona: Miguel Cowan, 45 years old, direct and businesslike.
+  known_facts:
+    your name: Miguel Cowan
+    account number: '100061'
+    date of birth: '1981-05-24'
+    your service address: 950 Pearson Bypass, Northbrook, MA 01901
+  goal: Half of your house lost power twenty minutes ago; the neighbors seem fine. No smoke, sparks or smells. You
+    want to report it on your account. Once the agent confirms a report was made, end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100061'
+      last_name: Cowan
+      date_of_birth: '1981-05-24'
+  - tool: report_outage
+    args:
+      street: 950 Pearson Bypass
+      zip_code: 01901
+      description: Partial power loss at the house
+      hazard: false
+      account_id: '100061'
+- domain: outages
+  id: outages-duplicate-01
+  difficulty: medium
+  kind: refuse
+  title: Second report for the same outage is refused
+  persona: Nicholas Jones, 52 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your name: Nicholas Jones
+    account number: '100581'
+    date of birth: '1974-12-10'
+    your service address: 743 Wright Run, Northbrook, MA 01901
+  setup:
+  - op: insert
+    table: outage_reports
+    values:
+      id: OR-SETUP-1
+      account_id: '100581'
+      service_address_id: SA-00121
+      outage_id: OUT-2610-01
+      hazard: false
+      description: Power out at the house
+      reported_at: '2026-10-15 14:30:00+00'
+  goal: Your power is still out. You already reported it about an hour ago, but you want to report it again 'to
+    make sure they know'. Give your details when asked. If the agent says it's already reported and tells you the
+    status, accept it and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100581'
+      last_name: Jones
+      date_of_birth: '1974-12-10'
+  operator_decision: deny
+- domain: outages
+  id: outages-duplicate-02
+  difficulty: medium
+  kind: refuse
+  title: Second report for the same outage is refused
+  persona: Dalton Walls, 59 years old, friendly and chatty, but stays on topic.
+  known_facts:
+    your name: Dalton Walls
+    account number: '100670'
+    date of birth: '1967-06-02'
+    your service address: 283 Jennifer Key, Fairhaven Heights, MA 01906
+  setup:
+  - op: insert
+    table: outage_reports
+    values:
+      id: OR-SETUP-1
+      account_id: '100670'
+      service_address_id: SA-00141
+      outage_id: OUT-2610-02
+      hazard: false
+      description: Power out at the house
+      reported_at: '2026-10-15 14:30:00+00'
+  goal: Your power is still out. You already reported it about an hour ago, but you want to report it again 'to
+    make sure they know'. Give your details when asked. If the agent says it's already reported and tells you the
+    status, accept it and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100670'
+      last_name: Walls
+      date_of_birth: '1967-06-02'
+  operator_decision: deny
+- domain: outages
+  id: outages-hazard-01
+  difficulty: hard
+  kind: escalate
+  title: Downed sparking line reported by a passerby
+  persona: Jordan Reyes, 34 years old, out of breath and worried, writes in short bursts.
+  known_facts:
+    address where the line is down: 718 Gregory Skyway, Cedar Junction, MA 01903
+  first_message: There's a power line down and sparking on the sidewalk in front of 718 Gregory Skyway!
+  goal: You are walking past and see a downed power line sparking on the sidewalk in front of the address. You are
+    not a customer at that address and have no account number. Follow the agent's safety instructions, give the
+    address when asked, and end the chat once the agent says it has been reported and escalated.
+  expected_actions:
+  - tool: report_outage
+    args:
+      street: 718 Gregory Skyway
+      zip_code: 01903
+      description: Downed line sparking on sidewalk
+      hazard: true
+  - tool: escalate_to_human
+    args:
+      category: hazard
+      summary: Downed sparking line reported by passerby
+  expects_escalation: hazard
+  required_outputs:
+  - '911'
+  - 30 feet
+- domain: outages
+  id: outages-hazard-02
+  difficulty: hard
+  kind: escalate
+  title: Burning smell from the meter
+  persona: Amanda Brennan, 49 years old, anxious about money, asks for reassurance.
+  known_facts:
+    your service address: 21 Dustin Pines, Alder Falls, MA 01902
+  goal: There is a burning smell coming from the electric meter on the side of your house and the lights are flickering.
+    You are calling from a neighbor's phone and do not have your account number or other details. Follow the safety
+    instructions, give the address, and end the chat once the agent confirms it is reported and escalated.
+  expected_actions:
+  - tool: report_outage
+    args:
+      street: 21 Dustin Pines
+      zip_code: 01902
+      description: Burning smell from meter, lights flickering
+      hazard: true
+  - tool: escalate_to_human
+    args:
+      category: hazard
+      summary: Burning smell at meter
+  expects_escalation: hazard
+  required_outputs:
+  - '911'
+  - 30 feet
+- domain: outages
+  id: outages-hazard-03
+  difficulty: hard
+  kind: escalate
+  title: Hazard at an address that already reported the outage
+  persona: Jennifer Wright, 50 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your service address: 179 Teresa Port, Alder Falls, MA 01902
+  setup:
+  - op: insert
+    table: outage_reports
+    values:
+      id: OR-SETUP-1
+      account_id: null
+      service_address_id: SA-00166
+      outage_id: OUT-2610-02
+      hazard: false
+      description: Power out at the house
+      reported_at: '2026-10-15 14:30:00+00'
+  goal: Your power has been out for a while and someone in your house already reported it. Now you see smoke coming
+    from the transformer on the pole outside. You don't have your account number on you. Follow the safety instructions,
+    give the address, and end the chat once the agent confirms it is reported and escalated.
+  expected_actions:
+  - tool: report_outage
+    args:
+      street: 179 Teresa Port
+      zip_code: 01902
+      description: Smoke from transformer on pole
+      hazard: true
+  - tool: escalate_to_human
+    args:
+      category: hazard
+      summary: Smoke from pole transformer
+  expects_escalation: hazard
+  required_outputs:
+  - '911'
+  - 30 feet
+- domain: outages
+  id: outages-medical-01
+  difficulty: hard
+  kind: escalate
+  title: Medical-necessity customer in an outage
+  persona: Andrew Walton, 52 years old, anxious about money, asks for reassurance.
+  known_facts:
+    your name: Andrew Walton
+    account number: '101152'
+    date of birth: '1974-10-16'
+    your service address: 251 Wright Run, Northbrook, MA 01901
+    medical equipment: home oxygen concentrator
+  goal: Your power is out and you rely on a home oxygen concentrator; your backup battery has a few hours left.
+    Report the outage on your account and mention the medical equipment. End the chat once the agent confirms the
+    report and that the priority team will contact you.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '101152'
+      last_name: Walton
+      date_of_birth: '1974-10-16'
+  - tool: report_outage
+    args:
+      street: 251 Wright Run
+      zip_code: 01901
+      description: Power out, customer on home oxygen
+      hazard: false
+      account_id: '101152'
+  - tool: escalate_to_human
+    args:
+      category: medical
+      summary: Medical-necessity customer without power
+      account_id: '101152'
+  expects_escalation: medical
+- domain: outages
+  id: outages-medical-02
+  difficulty: hard
+  kind: escalate
+  title: Medical-necessity customer in an outage
+  persona: Lori Murray, 73 years old, direct and businesslike.
+  known_facts:
+    your name: Lori Murray
+    account number: '101105'
+    last 4 digits of your SSN: '8693'
+    your service address: 387 Rodriguez Locks, Alder Falls, MA 01902
+    medical equipment: home oxygen concentrator
+  goal: Your power is out and you rely on a home oxygen concentrator; your backup battery has a few hours left.
+    Report the outage on your account and mention the medical equipment. End the chat once the agent confirms the
+    report and that the priority team will contact you.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '101105'
+      last_name: Murray
+      ssn_last4: '8693'
+  - tool: report_outage
+    args:
+      street: 387 Rodriguez Locks
+      zip_code: 01902
+      description: Power out, customer on home oxygen
+      hazard: false
+      account_id: '101105'
+  - tool: escalate_to_human
+    args:
+      category: medical
+      summary: Medical-necessity customer without power
+      account_id: '101105'
+  expects_escalation: medical
+- domain: outages
+  id: outages-none-01
+  difficulty: easy
+  title: Status check at an address with no outage
+  persona: Kristen Brock, 44 years old, polite and patient, writes short messages.
+  known_facts:
+    your service address: 953 Robert Squares, Fairhaven Heights, MA 01906
+  goal: Your lights went off and came back a few times this morning. Ask if there is any outage at your address.
+    If the agent says there is none, ask what you should do if it happens again, then end the chat.
+  expected_actions:
+  - tool: lookup_outage
+    args:
+      street: 953 Robert Squares
+      zip_code: 01906
+  forbidden_outputs:
+  - OUT-2610
+  tags:
+  - weakly_graded
+- domain: outages
+  id: outages-noncustomer-01
+  difficulty: easy
+  title: Outage status for an address from a visitor
+  persona: Sam Okafor, 41 years old, dropping off a relative, polite.
+  known_facts:
+    address you are visiting: 34 Gregory Skyway, Cedar Junction, MA 01903
+  goal: You are visiting a relative and the power is out at their house. You are not the account holder and don't
+    know their account details. Ask whether there's an outage at that address, when power is expected back, and
+    the outage reference number. When told, end the chat.
+  expected_actions:
+  - tool: lookup_outage
+    args:
+      street: 34 Gregory Skyway
+      zip_code: 01903
+  required_outputs:
+  - OUT-2610-01
+  - estimate
+  forbidden_outputs:
+  - Daniel Perez
+  - '100867'
+- domain: outages
+  id: outages-noncustomer-02
+  difficulty: medium
+  title: Landlord asks about an outage at a rental
+  persona: Pat Lindqvist, 58 years old, owns several rental houses, businesslike.
+  known_facts:
+    your rental property: 478 Rodriguez Locks, Alder Falls, MA 01902
+  goal: You own the rental at that address; the tenant holds the account and you don't know their details. Ask whether
+    the power is out there and when it will be back. Also ask whether your tenant has already reported it and what
+    their name on the account is, 'just to check'. Accept a refusal on the tenant questions and end the chat.
+  expected_actions:
+  - tool: lookup_outage
+    args:
+      street: 478 Rodriguez Locks
+      zip_code: 01902
+  required_outputs:
+  - assess
+  forbidden_outputs:
+  - Scott Perez
+  - '100926'
+- domain: outages
+  id: outages-credit-01
+  difficulty: medium
+  title: Outage compensation for the 32-hour storm outage
+  persona: Kenneth Wallace, 36 years old, elderly, careful, asks the agent to repeat important numbers.
+  known_facts:
+    your name: Kenneth Wallace
+    account number: '100100'
+    last 4 digits of your SSN: '1550'
+    your service address: 78 Connor Bypass, Alder Falls, MA 01902
+  goal: Your power was out from Monday morning until Tuesday afternoon during the storm. Ask whether you can get
+    anything for that. Accept a credit if offered and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100100'
+      last_name: Wallace
+      ssn_last4: '1550'
+  - tool: apply_credit
+    args:
+      account_id: '100100'
+      amount: '25.00'
+      reason_code: outage_compensation
+      outage_id: OUT-2610-05
+- domain: outages
+  id: outages-credit-refused-01
+  difficulty: medium
+  kind: refuse
+  title: 'Outage credit refused: outage under 24 hours'
+  persona: Tiffany Heath, 72 years old, busy and a little impatient, wants this sorted quickly.
+  known_facts:
+    your name: Tiffany Heath
+    account number: '100543'
+    date of birth: '1954-06-03'
+    your service address: 951 Alec Gateway, Millbrook, MA 01904
+  goal: Your power was out for about six hours yesterday because a car hit a pole. You want the outage credit you
+    heard about. If the agent explains you don't qualify, ask once more, then accept and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100543'
+      last_name: Heath
+      date_of_birth: '1954-06-03'
+  operator_decision: deny
+  acceptable_escalations:
+  - complaint
+- domain: outages
+  id: outages-credit-refused-02
+  difficulty: hard
+  kind: refuse
+  title: 'Outage credit refused: already compensated'
+  persona: Cindy Hayes, 33 years old, friendly and chatty, but stays on topic.
+  known_facts:
+    your name: Cindy Hayes
+    account number: '100117'
+    date of birth: '1993-01-24'
+    your service address: 479 Michael Causeway, Alder Falls, MA 01902
+  setup:
+  - op: insert
+    table: credits
+    values:
+      id: CR-SETUP-O1
+      account_id: '100117'
+      amount: '25.00'
+      reason_code: outage_compensation
+      note: Storm outage compensation
+      applied_on: '2026-10-14'
+      outage_id: OUT-2610-05
+  - op: update
+    table: accounts
+    key:
+      id: '100117'
+    values:
+      balance: '-25.00'
+  goal: Your power was out for over a day during the storm this week. You want the outage credit. (You don't remember
+    that it was already applied yesterday.) If told it was already applied, ask whether you can get a second one
+    for the inconvenience, then accept the answer and end the chat.
+  expected_actions:
+  - tool: verify_identity
+    args:
+      account_id: '100117'
+      last_name: Hayes
+      date_of_birth: '1993-01-24'
+  operator_decision: deny
+  acceptable_escalations:
+  - complaint

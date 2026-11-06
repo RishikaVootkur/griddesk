@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I received a notice that my power might be disconnected for non‑payment. What can I do to keep it on?",
+ "usage": {
+  "input_tokens": 507,
+  "output_tokens": 45
+ },
+ "latency_ms": 506.2,
+ "cost_usd": 0.00010305
+}

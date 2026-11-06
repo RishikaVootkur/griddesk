@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Yes, I think that's an error—there should only be one $11.50 monthly customer charge.",
+ "usage": {
+  "input_tokens": 683,
+  "output_tokens": 40
+ },
+ "latency_ms": 478.7,
+ "cost_usd": 0.00012645
+}

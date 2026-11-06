@@ -13,6 +13,7 @@ from griddesk.tools.common import ToolContext, run_tool
 
 Street = Annotated[str, Field(description="Street address with house number, e.g. '412 Maple Ave'.")]
 Zip = Annotated[str | None, Field(description="5-digit ZIP code, if known.")]
+Unit = Annotated[str | None, Field(description="Apartment or unit, e.g. 'Apt 3', if the building has units.")]
 
 
 def build_outages_server(ctx: ToolContext) -> MCPServer:
@@ -23,10 +24,10 @@ def build_outages_server(ctx: ToolContext) -> MCPServer:
 
     @server.tool(description="Is there an outage at this address? Returns the active outage and recent ones.")
     def lookup_outage(
-        conversation_id: ConversationId, street: Street, zip_code: Zip = None
+        conversation_id: ConversationId, street: Street, zip_code: Zip = None, unit: Unit = None
     ) -> outages.AddressOutageStatus:
         return run_tool(
-            outages.lookup_outage, outages.AddressOutageStatus, ctx, conversation_id, street, zip_code
+            outages.lookup_outage, outages.AddressOutageStatus, ctx, conversation_id, street, zip_code, unit
         )
 
     @server.tool(
@@ -41,7 +42,13 @@ def build_outages_server(ctx: ToolContext) -> MCPServer:
         hazard: Annotated[
             bool, Field(description="Downed line, sparking, fire, smoke or burning smell.")
         ] = False,
-        account_id: Annotated[str | None, Field(description="The verified caller's account, if any.")] = None,
+        account_id: Annotated[
+            str | None,
+            Field(
+                description="The caller's account; linked only once the caller has verified as its holder."
+            ),
+        ] = None,
+        unit: Unit = None,
     ) -> outages.ReportOut:
         return run_tool(
             outages.report_outage,
@@ -53,6 +60,7 @@ def build_outages_server(ctx: ToolContext) -> MCPServer:
             description,
             hazard,
             account_id,
+            unit,
         )
 
     @server.tool(description="Current status and estimated restoration time for an outage id.")

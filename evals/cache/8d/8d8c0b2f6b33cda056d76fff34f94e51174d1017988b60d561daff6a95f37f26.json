@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "My date of birth is 1977-09-20.",
+ "usage": {
+  "input_tokens": 585,
+  "output_tokens": 33
+ },
+ "latency_ms": 369.3,
+ "cost_usd": 0.00010755
+}
