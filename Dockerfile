@@ -12,7 +12,8 @@ COPY docs ./docs
 COPY evals ./evals
 RUN uv sync --locked --no-dev
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
-RUN useradd --create-home griddesk && chown -R griddesk /app
+# The code and the venv stay root-owned (read-only for the service); only the cache dir is writable.
+RUN useradd --create-home griddesk && mkdir -p /app/.griddesk && chown griddesk /app/.griddesk
 USER griddesk
 EXPOSE 8000
 CMD ["uvicorn", "griddesk.api.app:app", "--host", "0.0.0.0", "--port", "8000"]

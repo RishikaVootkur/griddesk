@@ -1,18 +1,24 @@
 name: griddesk
 
 # Lean on purpose: the host also runs Ollama on a 16 GB Mac. Memory limits keep the stack near 3 GB.
+# Ports bind to 127.0.0.1 only. The API needs OPERATOR_TOKEN (put it in .env, for example
+# `OPERATOR_TOKEN=$(openssl rand -hex 32)`); `docker compose up` stops with an error without it.
 x-app: &app
   build: .
   image: griddesk-app:local
-  env_file: [.env]
   environment: &app-env
     DATABASE_URL: postgresql+psycopg://griddesk:griddesk@postgres:5432/griddesk
-    OLLAMA_BASE_URL: http://host.docker.internal:11434
     GRIDDESK_MCP_PRIVATE_NET: "1"
-  extra_hosts: ["host.docker.internal:host-gateway"]
   depends_on:
     postgres: {condition: service_healthy}
   restart: unless-stopped
+
+# A TCP probe in Python: the app image has no curl.
+x-mcp-health: &mcp-health
+  interval: 5s
+  timeout: 3s
+  retries: 20
+  start_period: 20s
 
 services:
   postgres:
@@ -21,7 +27,7 @@ services:
       POSTGRES_USER: griddesk
       POSTGRES_PASSWORD: griddesk
       POSTGRES_DB: griddesk
-    ports: ["5433:5432"]
+    ports: ["127.0.0.1:5433:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
     command: ["postgres", "-c", "shared_buffers=128MB", "-c", "max_connections=100"]
     healthcheck:
@@ -33,10 +39,16 @@ services:
 
   phoenix:
     image: arizephoenix/phoenix:version-21.0.0
-    ports: ["6006:6006"]
+    ports: ["127.0.0.1:6006:6006"]
     volumes: [phoenix:/mnt/data]
     environment:
       PHOENIX_WORKING_DIR: /mnt/data
+    healthcheck:
+      test: ["CMD", "/usr/bin/python3.13", "-c", "import socket; socket.create_connection(('localhost', 6006), 2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
     deploy: {resources: {limits: {memory: 1g}}}
 
   migrate:
@@ -48,50 +60,77 @@ services:
     <<: *app
     command: ["python", "-m", "griddesk.mcp_servers", "billing", "--host", "0.0.0.0", "--port", "8101"]
     depends_on: {migrate: {condition: service_completed_successfully}}
+    healthcheck:
+      <<: *mcp-health
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8101), 2)"]
     deploy: {resources: {limits: {memory: 256m}}}
 
   mcp-outages:
     <<: *app
     command: ["python", "-m", "griddesk.mcp_servers", "outages", "--host", "0.0.0.0", "--port", "8102"]
     depends_on: {migrate: {condition: service_completed_successfully}}
+    healthcheck:
+      <<: *mcp-health
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8102), 2)"]
     deploy: {resources: {limits: {memory: 256m}}}
 
   mcp-accounts:
     <<: *app
     command: ["python", "-m", "griddesk.mcp_servers", "accounts", "--host", "0.0.0.0", "--port", "8103"]
     depends_on: {migrate: {condition: service_completed_successfully}}
+    healthcheck:
+      <<: *mcp-health
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8103), 2)"]
     deploy: {resources: {limits: {memory: 256m}}}
 
   mcp-knowledge:
     <<: *app
     command: ["python", "-m", "griddesk.mcp_servers", "knowledge", "--host", "0.0.0.0", "--port", "8104"]
     depends_on: {migrate: {condition: service_completed_successfully}}
+    healthcheck:
+      <<: *mcp-health
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8104), 2)"]
     deploy: {resources: {limits: {memory: 256m}}}
 
   api:
     <<: *app
+    # Only the API talks to the model providers, so only it gets the API keys. .env is optional.
+    env_file:
+      - path: .env
+        required: false
     environment:
       <<: *app-env
+      OPERATOR_TOKEN: ${OPERATOR_TOKEN:?set OPERATOR_TOKEN in .env, for example with openssl rand -hex 32}
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
       TRACING_ENABLED: "true"
       PHOENIX_COLLECTOR_ENDPOINT: http://phoenix:6006/v1/traces
       MCP_BILLING_URL: http://mcp-billing:8101/mcp
       MCP_OUTAGES_URL: http://mcp-outages:8102/mcp
       MCP_ACCOUNTS_URL: http://mcp-accounts:8103/mcp
       MCP_KNOWLEDGE_URL: http://mcp-knowledge:8104/mcp
-    ports: ["8000:8000"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    ports: ["127.0.0.1:8000:8000"]
+    healthcheck:
+      # /api/health also pings the database.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
     depends_on:
       migrate: {condition: service_completed_successfully}
-      mcp-billing: {condition: service_started}
-      mcp-outages: {condition: service_started}
-      mcp-accounts: {condition: service_started}
-      mcp-knowledge: {condition: service_started}
-      phoenix: {condition: service_started}
+      mcp-billing: {condition: service_healthy}
+      mcp-outages: {condition: service_healthy}
+      mcp-accounts: {condition: service_healthy}
+      mcp-knowledge: {condition: service_healthy}
+      phoenix: {condition: service_healthy}
     deploy: {resources: {limits: {memory: 1g}}}
 
   web:
     build: ./web
-    ports: ["5173:80"]
-    depends_on: [api]
+    ports: ["127.0.0.1:5173:8080"]
+    depends_on:
+      api: {condition: service_healthy}
     deploy: {resources: {limits: {memory: 128m}}}
 
 volumes:
