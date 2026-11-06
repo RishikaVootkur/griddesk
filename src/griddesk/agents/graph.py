@@ -159,9 +159,10 @@ def build_graph(
         result = await toolbox.execute_approved(first["action"], first["id"])
         status = result.get("status")
         if result.get("ok") and status == "executed":
-            note = (
-                f"A supervisor approved request {first['id']} and it was completed. Result: {compact(result)}"
-            )
+            # The tool result is untrusted data like any other: filter and spotlight it, and keep only
+            # the runtime's own sentence outside the block.
+            rendered = toolbox.render(first["action"], result, state["conversation_id"])
+            note = f"A supervisor approved request {first['id']} and it was completed. Result:\n{rendered}"
             pending = pending[1:]
         elif status == "denied":
             note = f"A supervisor denied request {first['id']}. The action was not performed."
