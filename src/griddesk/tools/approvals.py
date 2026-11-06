@@ -61,9 +61,29 @@ def get(ctx: ToolContext, approval_request_id: str) -> ApprovalOut | None:
         return _out(r) if r else None
 
 
+IDENTITY_MAX = 31  # decided_by and audit actor ("operator:" + identity) are String(40)
+DISPLAY_NAME_MAX = 40
+
+
 def decide(
-    ctx: ToolContext, approval_request_id: str, decision: Literal["approve", "deny"], operator: str
+    ctx: ToolContext,
+    approval_request_id: str,
+    decision: Literal["approve", "deny"],
+    operator: str,
+    display_name: str | None = None,
 ) -> ApprovalOut:
+    """Record an operator decision.
+
+    `operator` is the trusted identity (from authentication) and is stored as `decided_by` and as the
+    audit actor `operator:<identity>`. `display_name` is a free-text label from the console; it only
+    goes into the audit details, truncated.
+    """
+    identity = operator.removeprefix("operator:")
+    if not identity or len(identity) > IDENTITY_MAX:
+        raise ValueError(f"operator identity must be 1 to {IDENTITY_MAX} characters")
+    details: dict[str, Any] = {}
+    if display_name and display_name.strip():
+        details["display_name"] = display_name.strip()[:DISPLAY_NAME_MAX]
     with ctx.sessions() as s:
         r = s.get(m.ApprovalRequest, approval_request_id)
         if r is None:
@@ -72,7 +92,7 @@ def decide(
             raise ValueError(f"approval {r.id} is already {r.status}")
         r.status = "approved" if decision == "approve" else "denied"
         r.decided_at = ctx.clock.now()
-        r.decided_by = operator
+        r.decided_by = identity
         audit(
             s,
             ctx,
@@ -81,8 +101,8 @@ def decide(
             "ok",
             r.account_id,
             r.rule_id,
-            {"approval": r.id, "action": r.action},
-            actor=f"operator:{operator}",
+            {"approval": r.id, "action": r.action, **details},
+            actor=f"operator:{identity}",
         )
         s.commit()
         return _out(r)
