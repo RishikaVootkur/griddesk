@@ -239,6 +239,9 @@ def readback(s: Session) -> Iterator[dict[str, Any]]:
         goal="You can't remember whether you are on paperless billing or autopay. Ask the agent to check "
         "both. You don't want to change anything. When told, end the chat.",
         expected_actions=[verify(k)],
+        required_outputs=["paperless", "autopay"],
+        # Substring checks cannot tell "on" from "off", so the values themselves are not graded.
+        tags=["weakly_graded"],
     )
 
 

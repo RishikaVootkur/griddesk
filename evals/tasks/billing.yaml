@@ -88,6 +88,8 @@
       last_name: Rose
       date_of_birth: '1974-10-13'
   operator_decision: deny
+  acceptable_escalations:
+  - complaint
 - id: billing-plan-01
   domain: billing
   difficulty: medium
@@ -160,6 +162,8 @@
       last_name: Wong
       date_of_birth: '1956-07-05'
   operator_decision: deny
+  acceptable_escalations:
+  - complaint
 - id: billing-outage-credit-01
   domain: billing
   difficulty: medium

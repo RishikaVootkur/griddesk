@@ -68,7 +68,7 @@ def outage_then_billing(s: Session) -> Iterator[dict[str, Any]]:
         "back, and the outage reference number. Then ask what your current balance is. When you have the "
         "estimate, reference number and balance, end the chat.",
         expected_actions=[lookup(f), verify(f)],
-        required_outputs=[ETR, _money(f)],
+        required_outputs=[ETR, "estimate", _money(f)],
     )
     g = person(s, f"{ACTIVE} and a.autopay and {feeder(NO_ETR)}", skip=2)
     yield _base(
@@ -108,7 +108,7 @@ def hazard_then_balance(s: Session) -> Iterator[dict[str, Any]]:
             verify(f),
         ],
         expects_escalation="hazard",
-        required_outputs=[_money(f)],
+        required_outputs=["911", "30 feet", _money(f)],
     )
 
 

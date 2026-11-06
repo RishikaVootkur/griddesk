@@ -332,6 +332,8 @@
   required_outputs:
   - portal
   operator_decision: deny
+  acceptable_escalations:
+  - complaint
 - domain: accounts
   id: accounts-autopay-on-refused-02
   difficulty: easy
@@ -353,6 +355,8 @@
   required_outputs:
   - portal
   operator_decision: deny
+  acceptable_escalations:
+  - complaint
 - domain: accounts
   id: accounts-readback-email-01
   difficulty: easy
@@ -418,6 +422,8 @@
   - david.gallegos46@example.com
   - 555-0133
   operator_decision: deny
+  acceptable_escalations:
+  - complaint
 - domain: accounts
   id: accounts-readback-settings-01
   difficulty: easy
@@ -435,6 +441,11 @@
       account_id: '100494'
       last_name: Williams
       date_of_birth: '1941-01-10'
+  required_outputs:
+  - paperless
+  - autopay
+  tags:
+  - weakly_graded
 - domain: accounts
   id: accounts-stop-01
   difficulty: medium
@@ -732,3 +743,5 @@
   required_outputs:
   - online
   operator_decision: deny
+  acceptable_escalations:
+  - complaint

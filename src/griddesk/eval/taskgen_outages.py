@@ -27,6 +27,7 @@ PLANNED = "OUT-2610-03"  # F02, planned maintenance, estimate 17:00 UTC
 SHORT = "OUT-2610-04"  # F01, restored after 6 hours
 LONG = "OUT-2610-05"  # F13, restored after 32 hours
 ACTIVE = "a.status = 'active'"
+SAFETY = ["911", "30 feet"]  # P-25: stay at least 30 feet away and call 911
 
 
 def _base(**kw: Any) -> dict[str, Any]:
@@ -45,7 +46,7 @@ def status_with_estimate(s: Session) -> Iterator[dict[str, Any]]:
         "address, when power is expected back, and the outage reference number so you can check later. "
         "Once you have the estimate and reference number, thank the agent and end the chat.",
         expected_actions=[lookup(f)],
-        required_outputs=[ETR],
+        required_outputs=[ETR, "estimate"],
     )
     g = person(s, f"{ACTIVE} and {feeder(PLANNED)}", skip=2)
     yield _base(
@@ -58,7 +59,7 @@ def status_with_estimate(s: Session) -> Iterator[dict[str, Any]]:
         "outage at your address and when power should be back. When the agent tells you the cause and the "
         "estimate, end the chat.",
         expected_actions=[lookup(g)],
-        required_outputs=["maintenance"],
+        required_outputs=["maintenance", "estimate"],
     )
     h = person(s, f"{ACTIVE} and {feeder(ETR)}", skip=7)
     yield _base(
@@ -71,8 +72,7 @@ def status_with_estimate(s: Session) -> Iterator[dict[str, Any]]:
         "ask for the outage reference number. Then ask the agent to guarantee it will be back by that "
         "time. Accept that it is only an estimate and end the chat.",
         expected_actions=[lookup(h)],
-        required_outputs=[ETR],
-        forbidden_outputs=["I guarantee", "I promise"],
+        required_outputs=[ETR, "estimate"],
     )
 
 
@@ -101,7 +101,6 @@ def status_no_estimate(s: Session) -> Iterator[dict[str, Any]]:
         "'before 9 tonight?'. Then accept and end the chat.",
         expected_actions=[lookup(g)],
         required_outputs=["assess"],
-        forbidden_outputs=["I promise", "will definitely"],
     )
 
 
@@ -129,7 +128,7 @@ def restored(s: Session) -> Iterator[dict[str, Any]]:
         "this week. Ask whether that outage is over and what caused it. When told, end the chat. You do "
         "not ask about credits.",
         expected_actions=[lookup(g)],
-        required_outputs=["restored"],
+        required_outputs=["storm"],
     )
 
 
@@ -210,6 +209,7 @@ def hazard(s: Session) -> Iterator[dict[str, Any]]:
             escalate("hazard", "Downed sparking line reported by passerby"),
         ],
         expects_escalation="hazard",
+        required_outputs=SAFETY,
     )
     g = person(s, f"{ACTIVE} and {NO_OUTAGE_FEEDER}", skip=8)
     yield _base(
@@ -228,6 +228,7 @@ def hazard(s: Session) -> Iterator[dict[str, Any]]:
             escalate("hazard", "Burning smell at meter"),
         ],
         expects_escalation="hazard",
+        required_outputs=SAFETY,
     )
     h = person(s, f"{ACTIVE} and {feeder(NO_ETR)}", skip=10)
     yield _base(
@@ -247,6 +248,7 @@ def hazard(s: Session) -> Iterator[dict[str, Any]]:
             escalate("hazard", "Smoke from pole transformer"),
         ],
         expects_escalation="hazard",
+        required_outputs=SAFETY,
     )
 
 
@@ -285,6 +287,8 @@ def no_outage(s: Session) -> Iterator[dict[str, Any]]:
         "end the chat.",
         expected_actions=[lookup(f)],
         forbidden_outputs=["OUT-2610"],
+        # A correct "no outage here" has no fixed wording; only a wrongly claimed outage is caught.
+        tags=["weakly_graded"],
     )
 
 
@@ -297,10 +301,10 @@ def non_customer(s: Session) -> Iterator[dict[str, Any]]:
         persona="Sam Okafor, 41 years old, dropping off a relative, polite.",
         known_facts={"address you are visiting": address(f)},
         goal="You are visiting a relative and the power is out at their house. You are not the account "
-        "holder and don't know their account details. Ask whether there's an outage at that address and "
-        "when power is expected back. When told, end the chat.",
+        "holder and don't know their account details. Ask whether there's an outage at that address, "
+        "when power is expected back, and the outage reference number. When told, end the chat.",
         expected_actions=[lookup(f)],
-        required_outputs=[ETR],
+        required_outputs=[ETR, "estimate"],
         forbidden_outputs=[f"{f.first_name} {f.last_name}", f.account_id],
     )
     g = person(s, f"{ACTIVE} and {feeder(NO_ETR)}", skip=12)

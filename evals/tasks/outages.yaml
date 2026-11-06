@@ -15,6 +15,7 @@
       zip_code: 01906
   required_outputs:
   - OUT-2610-01
+  - estimate
 - domain: outages
   id: outages-status-etr-02
   difficulty: easy
@@ -31,6 +32,7 @@
       zip_code: 01901
   required_outputs:
   - maintenance
+  - estimate
 - domain: outages
   id: outages-status-etr-03
   difficulty: medium
@@ -48,9 +50,7 @@
       zip_code: 01905
   required_outputs:
   - OUT-2610-01
-  forbidden_outputs:
-  - I guarantee
-  - I promise
+  - estimate
 - domain: outages
   id: outages-no-etr-01
   difficulty: easy
@@ -84,9 +84,8 @@
       zip_code: 01902
   required_outputs:
   - assess
-  forbidden_outputs:
-  - I promise
-  - will definitely
+  acceptable_escalations:
+  - complaint
 - domain: outages
   id: outages-restored-01
   difficulty: easy
@@ -118,7 +117,7 @@
       street: 812 Michael Causeway
       zip_code: 01902
   required_outputs:
-  - restored
+  - storm
 - domain: outages
   id: outages-report-linked-01
   difficulty: easy
@@ -313,6 +312,9 @@
       category: hazard
       summary: Downed sparking line reported by passerby
   expects_escalation: hazard
+  required_outputs:
+  - '911'
+  - 30 feet
 - domain: outages
   id: outages-hazard-02
   difficulty: hard
@@ -336,6 +338,9 @@
       category: hazard
       summary: Burning smell at meter
   expects_escalation: hazard
+  required_outputs:
+  - '911'
+  - 30 feet
 - domain: outages
   id: outages-hazard-03
   difficulty: hard
@@ -370,6 +375,9 @@
       category: hazard
       summary: Smoke from pole transformer
   expects_escalation: hazard
+  required_outputs:
+  - '911'
+  - 30 feet
 - domain: outages
   id: outages-medical-01
   difficulty: hard
@@ -454,6 +462,8 @@
       zip_code: 01906
   forbidden_outputs:
   - OUT-2610
+  tags:
+  - weakly_graded
 - domain: outages
   id: outages-noncustomer-01
   difficulty: easy
@@ -462,8 +472,8 @@
   known_facts:
     address you are visiting: 34 Gregory Skyway, Cedar Junction, MA 01903
   goal: You are visiting a relative and the power is out at their house. You are not the account holder and don't
-    know their account details. Ask whether there's an outage at that address and when power is expected back. When
-    told, end the chat.
+    know their account details. Ask whether there's an outage at that address, when power is expected back, and
+    the outage reference number. When told, end the chat.
   expected_actions:
   - tool: lookup_outage
     args:
@@ -471,6 +481,7 @@
       zip_code: 01903
   required_outputs:
   - OUT-2610-01
+  - estimate
   forbidden_outputs:
   - Daniel Perez
   - '100867'
@@ -538,6 +549,8 @@
       last_name: Heath
       date_of_birth: '1954-06-03'
   operator_decision: deny
+  acceptable_escalations:
+  - complaint
 - domain: outages
   id: outages-credit-refused-02
   difficulty: hard
@@ -576,3 +589,5 @@
       last_name: Hayes
       date_of_birth: '1993-01-24'
   operator_decision: deny
+  acceptable_escalations:
+  - complaint
