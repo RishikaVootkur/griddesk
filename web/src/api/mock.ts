@@ -113,7 +113,7 @@ function seed() {
     { ts: minutesAgo(3), conversation_id: "conv_7f3a", actor: "billing", action: "get_bill_history", account_id: "102738", outcome: "allowed", rule_id: null, details: {} },
     { ts: minutesAgo(3), conversation_id: "conv_7f3a", actor: "triage", action: "verify_identity", account_id: "102738", outcome: "allowed", rule_id: null, details: { method: "dob" } },
     { ts: minutesAgo(6), conversation_id: "conv_2b91", actor: "outages", action: "get_outage_status", account_id: "220415", outcome: "allowed", rule_id: null, details: { outage_id: "out_5531" } },
-    { ts: minutesAgo(8), conversation_id: "conv_9d10", actor: "accounts", action: "update_mailing_address", account_id: "118204", outcome: "denied", rule_id: "ACCT-ID-001", details: { reason: "identity not verified" } },
+    { ts: minutesAgo(8), conversation_id: "conv_9d10", actor: "account", action: "update_mailing_address", account_id: "118204", outcome: "denied", rule_id: "ACCT-ID-001", details: { reason: "identity not verified" } },
     { ts: minutesAgo(11), conversation_id: "conv_c044", actor: "billing", action: "waive_late_fee", account_id: "305522", outcome: "pending_approval", rule_id: "BILL-WAIVE-001", details: { amount_usd: 15 } },
     { ts: minutesAgo(19), conversation_id: "conv_5e7c", actor: "supervisor:jordan", action: "approve", account_id: "410077", outcome: "approved", rule_id: "BILL-PLAN-003", details: { approval_request_id: "apr_19aa" } },
     { ts: minutesAgo(24), conversation_id: "conv_5e7c", actor: "billing", action: "create_payment_plan", account_id: "410077", outcome: "pending_approval", rule_id: "BILL-PLAN-003", details: { installments: 6 } },
@@ -133,7 +133,7 @@ function route(text: string): { agent: string; reply: string; approval?: string 
   if (/(bill|balance|pay|due|late fee|plan)/.test(t))
     return { agent: "billing", reply: "Your current balance is $186.52, due November 18. Your last payment of $140.00 posted on October 17. Would you like to set up a payment plan?" };
   if (/(address|move|name|account|password|email)/.test(t))
-    return { agent: "accounts", reply: "I can update that for you once your identity is verified. Please confirm your account number, last name, and date of birth." };
+    return { agent: "account", reply: "I can update that for you once your identity is verified. Please confirm your account number, last name, and date of birth." };
   return { agent: "triage", reply: "Thanks for contacting Northbrook Power & Light. I can help with bills and payments, outages, and account changes. What can I do for you today?" };
 }
 
@@ -164,18 +164,20 @@ export function mockApi(loadEvalData: () => Promise<StaticEvalData>): Api {
       await sleep(150, signal);
       const id = nextId("conv");
       db.conversations.set(id, { id, messages: [], awaiting: null, updatedAt: new Date().toISOString(), accountId: "102738" });
-      return id;
+      return { conversation_id: id, token: `mock-${id}` };
     },
 
-    async *sendMessage(id, text, signal): AsyncGenerator<StreamEvent> {
+    async *sendMessage(conversation, text, signal): AsyncGenerator<StreamEvent> {
+      const id = conversation.conversation_id;
       const c = get(id);
       c.messages.push({ role: "customer", text, agent: null });
       c.updatedAt = new Date().toISOString();
       await sleep(700, signal);
       if (c.awaiting) {
         const reply = "Your request is still with a supervisor. I will let you know as soon as it is decided.";
-        c.messages.push({ role: "agent", text: reply, agent: "billing" });
-        yield { type: "agent", text: reply, agent: "billing" };
+        // The backend's holding reply comes from the runtime, not an agent.
+        c.messages.push({ role: "agent", text: reply, agent: null });
+        yield { type: "agent", text: reply, agent: null };
         yield { type: "done" };
         return;
       }
@@ -231,7 +233,7 @@ export function mockApi(loadEvalData: () => Promise<StaticEvalData>): Api {
       await sleep(400);
       const a = db.approvals.find((x) => x.approval_request_id === approvalId);
       if (!a || a.status !== "pending") throw new Error("This request was already decided.");
-      a.status = decision === "approve" ? "approved" : "denied";
+      a.status = decision === "approve" ? "executed" : "denied";
       const c = db.conversations.get(a.conversation_id);
       const reply =
         decision === "approve"
@@ -243,7 +245,7 @@ export function mockApi(loadEvalData: () => Promise<StaticEvalData>): Api {
         c.messages.push({ role: "agent", text: reply, agent: "billing" });
         c.updatedAt = new Date().toISOString();
       }
-      db.audit.unshift({ id: nextId("aud"), ts: new Date().toISOString(), conversation_id: a.conversation_id, actor: `supervisor:${operator}`, action: decision, account_id: a.account_id, outcome: a.status, rule_id: a.rule_id, details: { approval_request_id: approvalId } });
+      db.audit.unshift({ id: nextId("aud"), ts: new Date().toISOString(), conversation_id: a.conversation_id, actor: "operator:console", action: `approval_${decision === "approve" ? "approved" : "denied"}`, account_id: a.account_id, outcome: "ok", rule_id: a.rule_id, details: { approval: approvalId, display_name: operator.slice(0, 40) } });
       return { status: a.status, reply };
     },
 

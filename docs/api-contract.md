@@ -9,6 +9,8 @@ This is the contract the web app in `web/` is written against. The TypeScript ty
 - **Timestamps.** ISO 8601 strings with a timezone, for example `2026-11-04T04:12:43+00:00`.
 - **Errors.** Any non-2xx status is an error. The client shows FastAPI's `{"detail": "<message>"}` when `detail` is a string. Otherwise it shows `<status> <statusText>`.
 - **Nullable fields.** A field typed `T | null` below is always present and may be `null`. A field marked optional may be missing.
+- **Customer access.** `POST /conversations` returns a `token`, a secret for that one conversation. Every other request about the conversation sends it as the `X-Conversation-Token` header. A missing or wrong token is `401`. An unknown `conversation_id` is `404`.
+- **Operator access.** Operator endpoints (marked *operator* below) need `Authorization: Bearer <OPERATOR_TOKEN>`. A missing or wrong token is `401`. The console asks the operator for the token and keeps it for the browser session; `VITE_OPERATOR_TOKEN` can supply it in local development only. The API refuses to start without `OPERATOR_TOKEN` unless `GRIDDESK_OPERATOR_AUTH=off` is set for local development.
 
 ## Conversations
 
@@ -19,12 +21,14 @@ Starts a conversation. The client sends the body `{}`.
 Response `200`:
 
 ```json
-{ "conversation_id": "conv_7f3a" }
+{ "conversation_id": "conv_7f3a", "token": "lJ0q7mQ2...base64url" }
 ```
+
+The client keeps `token` in memory for this conversation only. The server stores only a hash of it.
 
 ### `POST /conversations/{conversation_id}/messages`
 
-Sends one customer message and streams the agent's reply.
+Sends one customer message and streams the agent's reply. Needs the conversation's `X-Conversation-Token`. An operator token does not work here.
 
 Request body:
 
@@ -40,14 +44,15 @@ The response is `200` with `Content-Type: text/event-stream`. A non-2xx status i
 
 | `event` | `data` | Meaning |
 |---|---|---|
-| `agent` | `{"text": string, "agent": string}` | One complete agent message. `agent` names the specialist that wrote it: `triage`, `billing`, `outages` or `accounts`. A reply can contain several `agent` events, for example a triage handoff followed by the specialist's answer. |
+| `agent` | `{"text": string, "agent": string \| null}` | One complete agent message. `agent` names the specialist that wrote it: `triage`, `billing`, `outages` or `account`. It is `null` for a runtime message no agent wrote, such as "Your request is still with a supervisor" while the conversation waits for a decision. A reply can contain several `agent` events, for example a triage handoff followed by the specialist's answer. |
 | `approval` | `{"approval_request_id": string, "action": string}` | The conversation is now waiting for supervisor approval of `action`. The chat shows a waiting banner. |
 | `error` | `{"message": string}` | A problem the customer should see. The stream should still end with `done`. |
 | `done` | `{}` | End of the reply. The client stops reading and closes the connection. |
 
 **Rules the backend must follow:**
 
-- Every stream ends with exactly one `done` event. If the stream closes without one, the client reports "The connection closed before the reply finished."
+- Every stream ends with exactly one `done` event, also when the turn fails (then an `error` event comes first). If the stream closes without one, the client reports "The connection closed before the reply finished."
+- A client that disconnects does not cancel the turn. The turn still finishes and is saved, and the next transcript read shows it.
 - Every `data` payload is valid JSON. If an event's data fails to parse, the client shows "The server sent a malformed event."
 - The client ignores unknown event names and anything sent after `done`.
 
@@ -68,7 +73,7 @@ data: {}
 
 ```
 
-### `GET /conversations`
+### `GET /conversations` (*operator*)
 
 Lists open conversations for the operator console. The console polls it every 5 seconds, starting each request only after the previous one finishes.
 
@@ -98,7 +103,9 @@ Response `200`: `ConversationSummary[]`
 
 ### `GET /conversations/{conversation_id}`
 
-Returns the read-only transcript. The chat also polls this while waiting for an approval decision.
+Returns the read-only transcript. The chat also polls this while waiting for an approval decision. Needs either the conversation's `X-Conversation-Token` (the customer) or the operator token (the console).
+
+If the conversation is paused on a request an operator already decided (because resuming failed earlier), reading it retries the resume first.
 
 Response `200`: `ConversationDetail`
 
@@ -119,7 +126,7 @@ Response `200`: `ConversationDetail`
 
 ## Approvals
 
-### `GET /approvals?status=pending`
+### `GET /approvals?status=pending` (*operator*)
 
 Response `200`: `ApprovalRequest[]`
 
@@ -141,7 +148,7 @@ Response `200`: `ApprovalRequest[]`
 
 `arguments` is any JSON object. It is shown exactly as received.
 
-### `POST /approvals/{approval_request_id}/decision`
+### `POST /approvals/{approval_request_id}/decision` (*operator*)
 
 Request body:
 
@@ -150,19 +157,21 @@ Request body:
 ```
 
 - `decision` is `"approve"` or `"deny"`.
-- `operator` is a free-text **display name** that the operator types in the console. It is not a credential. The backend must not use it for authorization or as the trusted audit actor. It must take the approver's identity from its own authentication.
+- `operator` is a free-text **display name** that the operator types in the console, at most 60 characters. It is not a credential. The backend does not use it for authorization or as the audit actor: the approver's identity comes from authentication (`OPERATOR_ID`, default `console`), and the audit actor is `operator:<identity>`. The display name is stored only in the audit entry's `details.display_name`, cut to 40 characters.
 
 Response `200`:
 
 ```json
-{ "status": "approved", "reply": "Good news: your credit was approved and applied." }
+{ "status": "executed", "reply": "Good news: your credit was approved and applied." }
 ```
 
-`reply` is the message sent to the customer. If a request was already decided, return a non-2xx status with a `detail` message.
+- `status` is the request's stored status after the decision: `executed` (approved and done), `denied`, or `approved`. `approved` means the decision is saved but the conversation could not be resumed yet (for example the model provider was down), so the action has not run and `reply` is `""`. The backend retries the resume on the next transcript read of, or message to, that conversation.
+- `reply` is the message sent to the customer.
+- If a request was already decided, the response is `409` with a `detail` message. An unknown id is `404`.
 
 ## Audit log
 
-### `GET /audit?limit=200[&outcome=<outcome>]`
+### `GET /audit?limit=200[&outcome=<outcome>]` (*operator*)
 
 - `limit` is a number. The console always sends `200`.
 - `outcome` is sent only when the operator picks a filter. An absent `outcome` means "all outcomes". The console offers `allowed`, `denied`, `pending_approval`, `approved` and `error`.
@@ -175,7 +184,7 @@ Response `200`: `AuditEntry[]`, newest first.
     "id": 9000,
     "ts": "2026-11-04T04:10:00+00:00",
     "conversation_id": "conv_7f3a",
-    "actor": "billing",
+    "actor": "agent",
     "action": "apply_bill_credit",
     "account_id": "102738",
     "outcome": "pending_approval",
@@ -185,6 +194,7 @@ Response `200`: `AuditEntry[]`, newest first.
 ]
 ```
 
+- `actor` is who acted, set by the backend: for example `agent`, `guardrail:action` or `operator:<identity>`.
 - `id` is a number or a string.
 - `conversation_id`, `account_id` and `rule_id` are a string or `null`.
 - `details` is any JSON object.

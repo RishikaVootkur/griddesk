@@ -1,5 +1,11 @@
 // Types for the GridDesk FastAPI backend, as documented in docs/api-contract.md. Change both together.
 
+/** `POST /conversations`. `token` is the conversation's secret: send it as `X-Conversation-Token`. */
+export interface NewConversation {
+  conversation_id: string;
+  token: string;
+}
+
 export type ConversationStatus = "active" | "awaiting_approval";
 
 export interface ConversationSummary {
@@ -29,7 +35,8 @@ export interface ConversationDetail {
 }
 
 export type StreamEvent =
-  | { type: "agent"; text: string; agent: string }
+  // `agent` is null for runtime messages no agent wrote (for example "still with a supervisor").
+  | { type: "agent"; text: string; agent: string | null }
   | { type: "approval"; approval_request_id: string; action: string }
   | { type: "error"; message: string }
   | { type: "done" };
@@ -48,8 +55,12 @@ export interface ApprovalRequest {
 
 export type Decision = "approve" | "deny";
 
+/**
+ * `executed` or `denied` once the conversation resumed. `approved` means the decision is stored but
+ * the action has not run yet (the resume failed); the backend retries it, and `reply` is empty.
+ */
 export interface DecisionResult {
-  status: string;
+  status: "executed" | "denied" | "approved" | (string & {});
   reply: string;
 }
 
