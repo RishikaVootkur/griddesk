@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Is there any other way I could arrange a payment plan?",
+ "usage": {
+  "input_tokens": 719,
+  "output_tokens": 30
+ },
+ "latency_ms": 455.7,
+ "cost_usd": 0.00012585
+}

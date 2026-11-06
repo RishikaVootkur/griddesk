@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I’m really concerned about the late fee on this bill—can it be waived?",
+ "usage": {
+  "input_tokens": 593,
+  "output_tokens": 43
+ },
+ "latency_ms": 465.9,
+ "cost_usd": 0.00011475
+}

@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your identity has been verified. To proceed with setting up your payment plan, I need to confirm your account details. Your account number is 100091, and your service address is 829 Owens Branch, Northbrook. Would you like to continue with setting up the payment plan?",
+ "usage": {
+  "input_tokens": 3574,
+  "output_tokens": 63
+ },
+ "latency_ms": 18568.2
+}

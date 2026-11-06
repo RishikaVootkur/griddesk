@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I don’t have the ZIP code right now.",
+ "usage": {
+  "input_tokens": 917,
+  "output_tokens": 38
+ },
+ "latency_ms": 540.6,
+ "cost_usd": 0.00016035
+}

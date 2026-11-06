@@ -28,3 +28,15 @@ Every tool takes a `conversation_id` that the runtime overwrites and hides from 
 
 ## D9. Eval trials share one seeded database through rolled-back transactions
 Each trial runs inside one connection and an outer transaction (`trial_scope`); tool commits become savepoints. Every trial starts from the identical seed with no re-seeding, and trials can run concurrently. New rows get ids from a per-trial seeded generator and timestamps from a ticking deterministic clock, so tool outputs, and therefore cached LLM requests, are identical on replay.
+
+## D10. Gemini agent model is `gemini-3.5-flash-lite`, not the newest Flash
+The brief asks for the newest free-tier model with tool calling. `gemini-3.8-flash` qualifies on paper, but its free tier allows 20 requests per day (from the API's own 429 body) and calls took up to 70 s, so an eval of even 13 tasks cannot finish. `gemini-3.5-flash-lite` is the newest Gemini with a workable quota (500 requests/day, about 1 s per call). The choice and the quota numbers are recorded in `PROGRESS.md`.
+
+## D11. Success = end state AND required outputs; violations are measured, not inferred
+A read-only task (balance inquiry) leaves the database unchanged, so state alone would pass an agent that said nothing. Tasks therefore list `required_outputs` (facts the agent must state) and `forbidden_outputs` (things it must never say). A violation is an executed action the policy forbids (audited as `policy_bypassed` when enforcement is off), personal data the agent said before the customer did, or a forbidden output. Attempts that the tools or the guard blocked are counted separately as attempted violations.
+
+## D12. The simulator's stop is enforced in code
+Simulator models ended chats in the same message as their request ("Yes, please schedule it ###STOP###"), so the agent never got to act and a correct agent was scored as failing. A prompt rule did not fix it; the harness now honors a stop only on a message that contains no request (`is_closing_only`). See the before and after runs in `evals/runs/`.
+
+## D13. The CI gate replays a recording made on the local model
+The gate needs a committed recording, and it must be re-recorded whenever a prompt, tool or task in the slice changes. Recording on local `qwen3:8b` costs no quota, so it can be redone on any PR; replay in CI needs no keys and is byte-for-byte deterministic. The model comparison itself runs on all three providers.

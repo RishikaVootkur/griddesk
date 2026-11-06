@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I've verified your identity, John Smith. Let me check your latest bill to see why the monthly customer charge appears twice. One moment, please.",
+ "usage": {
+  "input_tokens": 3520,
+  "output_tokens": 31
+ },
+ "latency_ms": 18402.9
+}

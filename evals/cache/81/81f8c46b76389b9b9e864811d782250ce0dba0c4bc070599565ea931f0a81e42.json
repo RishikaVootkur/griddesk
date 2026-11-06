@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "You're all set! The meter check will be scheduled and completed within the next 3-5 business days. If you have any more questions, feel free to ask. Have a great day!",
+ "usage": {
+  "input_tokens": 3935,
+  "output_tokens": 41
+ },
+ "latency_ms": 26594.3
+}

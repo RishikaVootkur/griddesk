@@ -1,0 +1,87 @@
+import { useEffect, useRef } from "react";
+import type { EvalTaskInfo, EvalTrial } from "../../api/types";
+import { Transcript } from "../../components/Transcript";
+import { Button, Pill } from "../../components/ui";
+import { usd } from "../../lib/format";
+
+export function TrialDialog({ trial, task, onClose }: { trial: EvalTrial; task: EvalTaskInfo | undefined; onClose: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  // A native modal <dialog> traps focus and handles Escape. We also return focus to the
+  // element that opened it, since the dialog is unmounted rather than closed.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (!dialog.open) dialog.showModal();
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      if (dialog.open) dialog.close();
+      document.body.style.overflow = prev;
+      opener?.focus();
+    };
+  }, []);
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="trial-title"
+      onClose={onClose}
+      // A click on the backdrop targets the <dialog> itself; clicks inside hit its children.
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      className="m-auto h-fit max-h-[92dvh] w-[calc(100%-1.5rem)] max-w-3xl overflow-hidden rounded-2xl bg-white p-0 shadow-xl backdrop:bg-slate-900/40"
+    >
+      <div className="flex max-h-[92dvh] flex-col">
+        <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+          <div className="min-w-0">
+            <h2 id="trial-title" className="truncate font-mono text-sm font-semibold text-slate-900">
+              {trial.task_id} · trial {trial.trial}
+            </h2>
+            {task && <p className="text-xs text-slate-500">{task.title} · {task.domain} · {task.difficulty} · {task.kind}</p>}
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {trial.success ? <Pill tone="good">pass</Pill> : <Pill tone="bad">fail</Pill>}
+              <Pill>{trial.turns} turns</Pill>
+              <Pill>{trial.tool_calls.length} tool calls</Pill>
+              <Pill>{usd(trial.agent_cost_usd)}</Pill>
+              {trial.violations.map((v) => (
+                <Pill key={v} tone="bad">violation: {v}</Pill>
+              ))}
+            </div>
+          </div>
+          <Button variant="ghost" onClick={onClose} aria-label="Close transcript" autoFocus>
+            Close
+          </Button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto">
+          {trial.error && <p className="mx-4 mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">Error: {trial.error}</p>}
+          <div className="bg-slate-50/60 px-3 py-4 sm:px-4">
+            {trial.transcript.length === 0 ? (
+              <p className="text-center text-sm text-slate-500">No transcript recorded.</p>
+            ) : (
+              <Transcript lines={trial.transcript.map((l) => ({ role: l.speaker, text: l.text }))} customerLabel="Simulated customer" />
+            )}
+          </div>
+          {trial.tool_calls.length > 0 && (
+            <section className="border-t border-slate-100 px-4 py-3">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Tool calls</h3>
+              <ol className="flex flex-col gap-2">
+                {trial.tool_calls.map((c, i) => (
+                  <li key={i} className="rounded-md border border-slate-200 p-2 text-xs">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono font-semibold text-slate-800">{c.tool}</span>
+                      {c.ok ? <Pill tone="good">ok</Pill> : <Pill tone="bad">blocked</Pill>}
+                      {c.rule_id && <Pill tone="info">{c.rule_id}</Pill>}
+                    </div>
+                    <pre className="mt-1 overflow-x-auto font-mono text-slate-600">{JSON.stringify(c.args)}</pre>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+        </div>
+      </div>
+    </dialog>
+  );
+}

@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I need to verify your identity to proceed with any changes to your account, including waiving fees. Could you please provide your date of birth or the last four digits of your Social Security Number?",
+ "usage": {
+  "input_tokens": 3483,
+  "output_tokens": 40
+ },
+ "latency_ms": 50930.7
+}

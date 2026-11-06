@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I'm unable to apply the outage credit without the exact ZIP code for your service address. Could you please provide the ZIP code for 949 Michael Causeway?",
+ "usage": {
+  "input_tokens": 3934,
+  "output_tokens": 35
+ },
+ "latency_ms": 33163.1
+}

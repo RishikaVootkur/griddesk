@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "The last four digits are 3182.",
+ "usage": {
+  "input_tokens": 581,
+  "output_tokens": 29
+ },
+ "latency_ms": 709.1,
+ "cost_usd": 0.00010454999999999998
+}

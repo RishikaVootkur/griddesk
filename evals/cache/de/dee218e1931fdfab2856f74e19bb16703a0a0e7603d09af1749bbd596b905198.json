@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Hi, I need some help with my latest bill. I'm really worried about the fees.",
+ "usage": {
+  "input_tokens": 490,
+  "output_tokens": 41
+ },
+ "latency_ms": 401.9,
+ "cost_usd": 0.0000981
+}

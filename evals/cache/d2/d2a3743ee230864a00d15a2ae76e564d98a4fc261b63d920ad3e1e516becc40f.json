@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Account number is 102652.The charge is listed as “Grid Maintenance Fee” for $27.45. What is that for?",
+ "usage": {
+  "input_tokens": 531,
+  "output_tokens": 57
+ },
+ "latency_ms": 567.7,
+ "cost_usd": 0.00011384999999999999
+}

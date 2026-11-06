@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "That amount looks incorrect—I was away for two weeks during that period. I’d like to formally dispute this bill.",
+ "usage": {
+  "input_tokens": 773,
+  "output_tokens": 41
+ },
+ "latency_ms": 660.2,
+ "cost_usd": 0.00014054999999999997
+}

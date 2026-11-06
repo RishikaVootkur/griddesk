@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I understand. Let me look up your recent bills to find the one with the late fee. Could you please provide the amount of the late fee? This will help me locate the correct bill for you.",
+ "usage": {
+  "input_tokens": 3857,
+  "output_tokens": 42
+ },
+ "latency_ms": 21869.5
+}

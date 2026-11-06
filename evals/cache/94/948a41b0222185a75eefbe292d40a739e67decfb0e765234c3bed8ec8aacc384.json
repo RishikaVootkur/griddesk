@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Thank you, Krause. I've confirmed your identity. Your current balance is $125.00. Would you like to proceed with a payment plan or make a payment?",
+ "usage": {
+  "input_tokens": 3488,
+  "output_tokens": 39
+ },
+ "latency_ms": 15339.4
+}

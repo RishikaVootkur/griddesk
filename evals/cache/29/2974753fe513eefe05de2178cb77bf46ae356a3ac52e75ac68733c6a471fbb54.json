@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "A specialist has been notified about your request for a six-month payment plan. A representative will contact you shortly to discuss your options. Is there anything else I can assist you with in the meantime?",
+ "usage": {
+  "input_tokens": 3838,
+  "output_tokens": 40
+ },
+ "latency_ms": 50589.3
+}

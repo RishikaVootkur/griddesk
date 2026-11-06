@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I don’t have the bill number handy; it was just the most recent one I received.",
+ "usage": {
+  "input_tokens": 621,
+  "output_tokens": 46
+ },
+ "latency_ms": 601.9,
+ "cost_usd": 0.00012074999999999998
+}

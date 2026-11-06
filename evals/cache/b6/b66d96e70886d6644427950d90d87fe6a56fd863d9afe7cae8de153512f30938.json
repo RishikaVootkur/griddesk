@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I’m not sure of the bill ID or the exact date—I only have the amount on the statement.",
+ "usage": {
+  "input_tokens": 763,
+  "output_tokens": 81
+ },
+ "latency_ms": 1025.3,
+ "cost_usd": 0.00016305
+}
