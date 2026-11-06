@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "The late fee on your bill is $15.00. As a one-time waiver, I can apply it to your account. Would you like me to proceed with waiving the late fee?",
+ "usage": {
+  "input_tokens": 4208,
+  "output_tokens": 42
+ },
+ "latency_ms": 33601.5
+}

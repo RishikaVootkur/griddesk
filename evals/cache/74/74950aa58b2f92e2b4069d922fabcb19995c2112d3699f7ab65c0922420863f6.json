@@ -1,0 +1,18 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_5rrz2xva",
+   "name": "dispute_bill",
+   "arguments": {
+    "bill_id": "B-102721-2610",
+    "reason": "Duplicate monthly customer charge on the bill."
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 4270,
+  "output_tokens": 44
+ },
+ "latency_ms": 24948.5
+}

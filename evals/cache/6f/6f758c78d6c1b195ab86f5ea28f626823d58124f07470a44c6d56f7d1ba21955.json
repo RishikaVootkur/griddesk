@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Your dispute has been noted, and a case (ESC-FE848329) has been opened for review. A specialist will contact you to gather more details and resolve this matter. Thank you for your patience.",
- "usage": {
-  "input_tokens": 4076,
-  "output_tokens": 47
- },
- "latency_ms": 17710.8
-}

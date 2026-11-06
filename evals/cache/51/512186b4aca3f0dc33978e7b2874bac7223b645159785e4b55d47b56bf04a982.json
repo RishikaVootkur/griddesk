@@ -1,0 +1,17 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_rrhev0gg",
+   "name": "explain_bill",
+   "arguments": {
+    "bill_id": "B-102652-2610"
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 3677,
+  "output_tokens": 33
+ },
+ "latency_ms": 16057.9
+}

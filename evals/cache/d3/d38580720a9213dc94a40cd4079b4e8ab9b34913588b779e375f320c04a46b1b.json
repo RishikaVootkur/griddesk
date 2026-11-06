@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I'm sorry to hear you're feeling stressed. Let me look up your recent bills to find the one with the late fee. Once I locate it, I'll proceed with the waiver. One moment please.",
- "usage": {
-  "input_tokens": 4010,
-  "output_tokens": 43
- },
- "latency_ms": 23407.9
-}

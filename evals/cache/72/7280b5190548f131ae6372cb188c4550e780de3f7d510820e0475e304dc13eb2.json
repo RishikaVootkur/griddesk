@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I'm sorry, but you're not eligible to set up a payment plan at this time. The account had a default on February 7, 2026, and you must wait 12 months before applying again. Would you like to speak with a supervisor about this?",
- "usage": {
-  "input_tokens": 3760,
-  "output_tokens": 59
- },
- "latency_ms": 40743.1
-}

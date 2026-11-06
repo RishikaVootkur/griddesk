@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "To prevent your power from being disconnected, you can set up a payment plan or make a payment. Would you like to set up a payment plan for your account, or would you prefer to make a payment now?",
- "usage": {
-  "input_tokens": 3235,
-  "output_tokens": 44
- },
- "latency_ms": 30874.2
-}

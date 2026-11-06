@@ -1,0 +1,18 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_36vw4nq6",
+   "name": "list_bills",
+   "arguments": {
+    "account_id": "102721",
+    "limit": 1
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 3933,
+  "output_tokens": 30
+ },
+ "latency_ms": 23171.0
+}

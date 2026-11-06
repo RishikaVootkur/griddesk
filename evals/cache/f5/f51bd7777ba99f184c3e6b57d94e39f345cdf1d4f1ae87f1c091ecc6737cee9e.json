@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I'm sorry, but there are no other options available at this time. You must wait 12 months after a default before setting up a payment plan. Would you like to speak with a supervisor about this?",
- "usage": {
-  "input_tokens": 3840,
-  "output_tokens": 44
- },
- "latency_ms": 51109.4
-}
