@@ -676,7 +676,7 @@
       move_date: '2026-11-14'
   expects_approval: true
   tags:
-  - new_account:988464
+  - new_account:987158
 - domain: accounts
   id: accounts-transfer-02
   difficulty: hard
@@ -708,7 +708,7 @@
       move_date: '2026-12-01'
   expects_approval: true
   tags:
-  - new_account:917666
+  - new_account:983158
 - domain: accounts
   id: accounts-new-customer-01
   difficulty: easy
