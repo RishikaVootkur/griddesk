@@ -83,6 +83,7 @@ addopts = "-q --strict-markers"
 markers = [
   "db: needs a running Postgres (DATABASE_URL)",
   "live: calls a real LLM provider; skipped unless GRIDDESK_LIVE=1",
+  "slow: loads the spaCy model for Presidio (about 15 s); deselect with -m 'not slow'",
 ]
 
 [tool.coverage.run]
