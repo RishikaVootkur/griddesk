@@ -304,3 +304,4 @@ class Conversation(Base):
     last_message: Mapped[str] = mapped_column(Text, default="")  # PII redacted
     agent: Mapped[str | None] = mapped_column(String(24))
     message_count: Mapped[int] = mapped_column(Integer, default=0)
+    token_hash: Mapped[str | None] = mapped_column(String(64))  # SHA-256 of the customer's secret
