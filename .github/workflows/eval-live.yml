@@ -1,0 +1,50 @@
+name: eval-live
+
+# A small live eval on a schedule, using the GEMINI_API_KEY repository secret. It catches drift that the
+# replay gate cannot see (provider model updates, API changes). The agent is gemini-3.5-flash-lite; the
+# simulated customer is gemma-4-26b-a4b-it, Google's open-weights Gemma family, the only other model
+# family reachable with this one key. The run file is uploaded as an artifact.
+on:
+  schedule:
+    - cron: "17 7 * * 1"  # Mondays 07:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: griddesk
+          POSTGRES_PASSWORD: griddesk
+          POSTGRES_DB: griddesk
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U griddesk" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://griddesk:griddesk@localhost:5433/griddesk
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Migrate and seed
+        run: uv run alembic upgrade head && uv run griddesk db seed
+      - name: Live eval on six core tasks
+        run: |
+          uv run griddesk eval run --model gemini:gemini-3.5-flash-lite --design multi \
+            --task-file evals/subsets/core-30.txt --limit 6 --trials 1 --concurrency 2 \
+            --sim-model gemini:gemma-4-26b-a4b-it --sim-fallbacks "" \
+            --label live-$(date -u +%Y%m%d) --out live-run.json | tee live.txt
+          { echo '## Live eval'; echo '```'; tail -6 live.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: live-eval
+          path: live-run.json
