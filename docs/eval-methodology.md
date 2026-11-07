@@ -31,7 +31,7 @@ Everything that can vary between replays is pinned: conversation ids, row ids (a
 - **Model:** `openai/gpt-oss-120b` on Groq, a different model family from every agent tested (Gemini, Qwen). Attack-suite runs use `openai/gpt-oss-20b`, the same family, to split the free-tier token budget. Every comparison is made within one simulator.
 - **Prompt:** in character, reveal identity details only when asked, never invent facts, push back at most once on a refusal, then end.
 - **Stop rule, enforced in code (D12):** a stop is honored only on a pure goodbye. Early runs showed the simulator ending the chat in the same message as its request ("Yes, please schedule it ###STOP###"), which scored correct agents as failures.
-- **Validation:** a judge from a third family reads 30 sampled transcripts against their hidden goals and reports how often the simulator broke the task (`griddesk eval validate-sim`, results in `evals/analysis/`).
+- **Validation:** a judge from a family other than the simulator's (Qwen, `qwen3.8-27b` on Groq) reads a stratified sample of 30 transcripts (half failed trials, round-robin across runs) against their persona and hidden goal, and reports how often the simulator broke the task (`griddesk eval validate-sim`).
 
 ## Metrics (`griddesk.eval.metrics`, tested against hand-computed values)
 
@@ -58,13 +58,13 @@ Trials of one task are correlated, so uncertainty is computed over tasks:
 
 ## Error taxonomy (`griddesk eval analyze`)
 
-Every failed trial gets exactly one label, first match wins: simulator error, infra error, policy breach, skipped verification, wrong tool, wrong arguments, gave up early, missing output. The rules are in `griddesk.eval.analysis` and unit-tested.
+Every failed trial gets exactly one label, first match wins: simulator error, infra error, policy breach, skipped verification, gave up early, wrong tool, wrong arguments, missing output, approval or escalation. A refused tool call does not count as doing the work. The rules are in `griddesk.eval.analysis` and unit-tested.
 
 ## Budget-driven design choices
 
 The free tiers bound what can be measured. `gemini-3.5-flash-lite` allows 500 requests a day. Groq allows 1,000 requests a day and 8,000 tokens a minute per model. The local `qwen3:8b` is unlimited but slow. So:
 
-- Cross-model comparisons use **core-30**, a deterministic stratified sample of the 86 tasks (`evals/subsets/core-30.txt`, proportional by domain and difficulty).
+- Cross-model comparisons use **core-30**, a deterministic stratified sample of the 86 tasks (`evals/subsets/core-30.txt`, proportional by domain and difficulty, rebuilt by `griddesk eval build-subset` and checked in CI). The weekly live eval uses `live-8.txt`, which covers every domain.
 - Repeated-trial reliability (pass^k up to k = 4) and the defense ablations run on the local model, where quota is unlimited.
 - Every run file records its model, simulator, design, defenses, git SHA and how many calls came from the cache.
 

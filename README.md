@@ -57,7 +57,7 @@ flowchart LR
 
 - **Tasks.** Each task has a hidden goal and persona for the simulated customer, setup rows, and ground-truth tool calls. The expected end state comes from replaying those calls through the policy-checked tools on a fresh trial, so a task can never contradict the handbook.
 - **Trials.** Each trial runs inside one rolled-back database transaction, so every trial starts from the same 520-customer synthetic seed. Ids, the clock and cache keys are pinned, so a recorded run replays byte for byte.
-- **Simulator.** `gpt-oss-120b` plays the customer. It is a different model family from every agent tested, and it was validated by a judge from a third family.
+- **Simulator.** `gpt-oss-120b` plays the customer. It is a different model family from every agent tested, and a judge from another family checks a stratified sample of its transcripts.
 - **Success.** The table diff must equal the expected diff, and every required fact must be said. Violations, attack success, tool-call validity, approvals, escalations, latency and list-price cost are all measured.
 - **Statistics.** 95% confidence intervals come from a cluster bootstrap over tasks, and runs are compared with a paired sign-flip test on shared tasks.
 
