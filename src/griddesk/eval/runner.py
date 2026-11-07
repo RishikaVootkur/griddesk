@@ -420,6 +420,7 @@ async def run_suite(
         "environment": {
             "python": platform.python_version(),
             "simulated_now": str(get_settings().simulated_now),
+            "git_sha": _git_sha(),
         },
         "wall_time_s": round(time.time() - started, 1),
         "summary": summary,
@@ -431,6 +432,22 @@ async def run_suite(
         },
         "trials": [asdict(r) for r in records],
     }
+
+
+def _git_sha() -> str:
+    import subprocess
+
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],  # noqa: S607 (git from PATH is intended)
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        return out.stdout.strip()
+    except OSError:
+        return ""
 
 
 def _breakdown(records: Sequence[TrialRecord], tasks: dict[str, Task], attr: str) -> dict[str, float]:

@@ -1,0 +1,10 @@
+# A stratified sample of the task suite (domain x difficulty, proportional).
+# Rebuild with `griddesk eval build-subset`; tests/test_subsets.py checks it is current.
+accounts-autopay-off-01
+accounts-email-invalid-01
+accounts-new-customer-01
+billing-dispute-01
+mixed-autopay-mailing-01
+mixed-dispute-phone-01
+outages-credit-01
+outages-no-etr-01

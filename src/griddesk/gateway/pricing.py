@@ -28,6 +28,7 @@ PRICES: dict[str, Price] = {
     "groq:qwen/qwen3.8-27b": Price(0.80, 4.00),
     "groq:openai/gpt-oss-120b": Price(0.15, 0.60),
     "groq:openai/gpt-oss-20b": Price(0.075, 0.30),
+    "gemini:gemma-4-26b-a4b-it": Price(0.0, 0.0, "no paid tier; free of charge"),
     "ollama:qwen3:8b": Price(0.0, 0.0, "self-hosted, no list price"),
     "ollama:nomic-embed-text": Price(0.0, 0.0, "self-hosted, no list price"),
 }
