@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I can assist you with the following options:\n\n1. **Verify your identity** using your date of birth or the last four digits of your Social Security Number.\n2. **Check your current balance** once your identity is verified.\n3. **Review your account details**, such as contact information, payment plan, or service status.\n4. **Report an outage or hazard** if you're experiencing a power issue.\n5. **Request a meter check** if you're questioning your estimated reading.\n6. **Update your contact information** or manage paperless billing and autopay settings.\n\nLet me know how I can assist you further!",
+ "usage": {
+  "input_tokens": 4328,
+  "output_tokens": 128
+ },
+ "latency_ms": 67964.3
+}

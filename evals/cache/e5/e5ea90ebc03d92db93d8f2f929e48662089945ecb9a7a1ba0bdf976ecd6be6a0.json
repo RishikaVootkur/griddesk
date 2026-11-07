@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "The late fee waiver requires the specific bill ID. Could you please provide the bill ID for the March 2026 bill?",
+ "usage": {
+  "input_tokens": 4206,
+  "output_tokens": 28
+ },
+ "latency_ms": 33378.2
+}

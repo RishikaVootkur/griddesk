@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your account is verified. Your current balance for account 101219 is $150.00. Would you like to proceed with a payment plan or need further assistance?",
+ "usage": {
+  "input_tokens": 3972,
+  "output_tokens": 41
+ },
+ "latency_ms": 64634.3
+}

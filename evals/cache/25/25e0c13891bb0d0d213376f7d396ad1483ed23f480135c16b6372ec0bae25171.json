@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I'm sorry, but I cannot process the late fee waiver without the bill ID. If you can locate the bill ID, please share it, and I’ll be happy to assist you. Have a great day!",
+ "usage": {
+  "input_tokens": 4653,
+  "output_tokens": 44
+ },
+ "latency_ms": 7280.4
+}

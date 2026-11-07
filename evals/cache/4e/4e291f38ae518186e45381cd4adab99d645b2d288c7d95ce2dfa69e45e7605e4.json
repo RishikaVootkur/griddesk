@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "1991-03-12.I was away on vacation for two weeks during the billing cycle, so the usage shown can’t be correct. I’d like to formally dispute this bill.We’ve opened a dispute for your bill. A specialist will review the usage details and contact you with the findings. Is there anything else I can help you with today?No, that’s all. Thank you. ###STOP###",
+ "usage": {
+  "input_tokens": 584,
+  "output_tokens": 139
+ },
+ "latency_ms": 551.3,
+ "cost_usd": 0.000171
+}

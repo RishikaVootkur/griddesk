@@ -1,10 +1,10 @@
 {
  "model": "groq:openai/gpt-oss-120b",
- "content": "Account number: 100056. Last name: Krause.",
+ "content": "Account number is 100056 and the last name is Krause.",
  "usage": {
   "input_tokens": 533,
-  "output_tokens": 38
+  "output_tokens": 33
  },
- "latency_ms": 395.0,
- "cost_usd": 0.00010275
+ "latency_ms": 585.8,
+ "cost_usd": 0.00009975
 }

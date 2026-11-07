@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I've verified your account. To check the meter reading, I'll need to schedule a meter check. Would you like to proceed with that?",
- "usage": {
-  "input_tokens": 1970,
-  "output_tokens": 30
- },
- "latency_ms": 2530.3
-}

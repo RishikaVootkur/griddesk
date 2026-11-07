@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Thank you for providing your account details. I'll look into the issue with your monthly customer charge appearing twice. Could you please share your date of birth or the last four digits of your Social Security Number to verify your identity?",
- "usage": {
-  "input_tokens": 1969,
-  "output_tokens": 46
- },
- "latency_ms": 4010.9
-}

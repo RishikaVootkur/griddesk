@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I see the issue. Your latest bill (B-102721-2610) has the monthly customer charge listed twice, which is an error. I'll apply a credit to correct this. One moment please.",
- "usage": {
-  "input_tokens": 2480,
-  "output_tokens": 50
- },
- "latency_ms": 8102.9
-}

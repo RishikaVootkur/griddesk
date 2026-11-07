@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Okay, please go ahead and waive the $15 late fee. Thank you.Goodbye.  \n###STOP###",
+ "usage": {
+  "input_tokens": 1097,
+  "output_tokens": 87
+ },
+ "latency_ms": 739.5,
+ "cost_usd": 0.00021674999999999998
+}

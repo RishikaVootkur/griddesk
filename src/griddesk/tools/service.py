@@ -22,7 +22,7 @@ from griddesk.tools.common import (
     require_account,
     verified_customer_id,
 )
-from griddesk.tools.outages import find_address
+from griddesk.tools.outages import address_line, find_address
 
 
 class ContactOut(ToolOutput):
@@ -176,30 +176,62 @@ def set_autopay(ctx: ToolContext, conversation_id: str, account_id: str, enabled
 
 
 def lookup_address(
-    ctx: ToolContext, conversation_id: str, street: str, zip_code: str | None = None
+    ctx: ToolContext,
+    conversation_id: str,
+    street: str,
+    zip_code: str | None = None,
+    unit: str | None = None,
 ) -> AddressOut:
-    """Whether an address exists and has active service. Never says who lives there (P-05)."""
+    """Find a service address id and whether it has active service, for starting or moving service.
+
+    Occupancy is information about whoever lives there (P-05), so only a verified customer may ask
+    (P-01); the result never says who lives there.
+    """
     with ctx.sessions() as s:
-        addr = find_address(s, street, zip_code)
+        if verified_customer_id(s, conversation_id) is None:
+            enforce(
+                s,
+                ctx,
+                rules.check_account_access(None, ""),
+                conversation_id=conversation_id,
+                action="lookup_address",
+                account_id=None,
+                arguments={"street": street},
+            )
+        addr = find_address(s, street, zip_code, unit)
         audit(s, ctx, conversation_id, "lookup_address", "ok", None, details={"address": addr.id})
         s.commit()
         return AddressOut(
             service_address_id=addr.id,
-            has_active_service=_address_active(s, addr.id),
-            address=f"{addr.street}{', ' + addr.unit if addr.unit else ''}, {addr.city} {addr.zip}",
+            has_active_service=_address_active(s, addr.id, None),
+            address=address_line(addr),
         )
 
 
-def _address_active(s: Session, address_id: str) -> bool:
-    return (
-        s.scalars(
-            select(m.Account.id).where(
-                m.Account.service_address_id == address_id,
-                m.Account.status.in_(("active", "pending_start", "disconnect_scheduled")),
+def _address_active(s: Session, address_id: str, start_on: date | None) -> bool:
+    """Whether the address has an active account (P-20). An account with a scheduled stop or move
+    (`pending_stop`) stays active until its order date, so it blocks a start before that date. With
+    `start_on=None` the question is "is it occupied now"."""
+    for acct in s.scalars(
+        select(m.Account).where(
+            m.Account.service_address_id == address_id,
+            m.Account.status.in_(("active", "pending_start", "disconnect_scheduled", "pending_stop")),
+        )
+    ):
+        if acct.status != "pending_stop" or start_on is None:
+            return True
+        ends_on = s.scalars(
+            select(m.ServiceOrder.requested_on)
+            .where(
+                m.ServiceOrder.account_id == acct.id,
+                m.ServiceOrder.kind.in_(("stop", "transfer")),
+                m.ServiceOrder.status == "scheduled",
             )
+            .order_by(m.ServiceOrder.requested_on)
         ).first()
-        is not None
-    )
+        if ends_on is None or start_on < ends_on:
+            return True
+    return False
 
 
 def _past_due_unplanned(s: Session, customer_id: str) -> bool:
@@ -231,13 +263,19 @@ def start_service(
                 account_id=None,
                 arguments={"address": service_address_id},
             )
+            # Only reached with enforcement off (the ablation): the bypass is logged above, but there is
+            # no customer to open an account for, so stop here instead of inserting an empty owner.
+            s.commit()
+            raise PolicyStop(
+                ToolError(code="not_found", message="No verified customer to start service for.")
+            )
         addr = s.get(m.ServiceAddress, service_address_id.strip())
         if addr is None:
             raise PolicyStop(ToolError(code="not_found", message="No such service address."))
         facts = rules.StartFacts(
-            address_has_active_account=_address_active(s, addr.id),
+            address_has_active_account=_address_active(s, addr.id, when),
             requested_on=when,
-            customer_past_due_unplanned=bool(cust_id) and _past_due_unplanned(s, cust_id or ""),
+            customer_past_due_unplanned=_past_due_unplanned(s, cust_id),
         )
         enforce(
             s,
@@ -248,7 +286,7 @@ def start_service(
             account_id=None,
             arguments={"address": addr.id, "date": when.isoformat()},
         )
-        new_acct = _open_account(s, ctx, cust_id or "", addr.id, when)
+        new_acct = _open_account(s, ctx, cust_id, addr.id, when)
         order = _order(s, ctx, new_acct.id, "start", when)
         audit(s, ctx, conversation_id, "start_service", "ok", new_acct.id, details={"order": order.id})
         s.commit()
@@ -261,16 +299,29 @@ def start_service(
         )
 
 
-def new_account_id(customer_id: str, address_id: str) -> str:
-    """Account numbers for new service are derived from customer and address, so an eval trial and its
-    expected-state replay create the same id (D9)."""
-    digest = hashlib.sha256(f"{customer_id}:{address_id}".encode()).hexdigest()
-    return "9" + str(int(digest[:12], 16))[:5]
+def new_account_id(customer_id: str, address_id: str, n: int = 0) -> str:
+    """Account numbers for new service are derived from customer, address and an attempt counter, so an
+    eval trial and its expected-state replay create the same id (D9)."""
+    digest = hashlib.sha256(f"{customer_id}:{address_id}:{n}".encode()).hexdigest()
+    return f"9{int(digest[:12], 16) % 100_000:05d}"
+
+
+MAX_ID_ATTEMPTS = 1000
+
+
+def _free_account_id(s: Session, customer_id: str, address_id: str) -> str:
+    """The first derived id not already taken. A customer restarting at an address they once held, or a
+    hash collision with another account, moves on to the next counter value."""
+    for n in range(MAX_ID_ATTEMPTS):
+        candidate = new_account_id(customer_id, address_id, n)
+        if s.get(m.Account, candidate) is None:
+            return candidate
+    raise PolicyStop(ToolError(code="invalid_request", message="Could not allocate an account number."))
 
 
 def _open_account(s: Session, ctx: ToolContext, customer_id: str, address_id: str, when: date) -> m.Account:
     acct = m.Account(
-        id=new_account_id(customer_id, address_id),
+        id=_free_account_id(s, customer_id, address_id),
         customer_id=customer_id,
         service_address_id=address_id,
         status="pending_start",
@@ -296,6 +347,48 @@ def _order(
     )
     s.add(order)
     return order
+
+
+def _open_order_dates(s: Session, account_id: str) -> dict[str, date]:
+    """Earliest scheduled date of each open order kind, for the P-22 refusal."""
+    out: dict[str, date] = {}
+    for o in s.scalars(
+        select(m.ServiceOrder)
+        .where(m.ServiceOrder.account_id == account_id, m.ServiceOrder.status == "scheduled")
+        .order_by(m.ServiceOrder.requested_on, m.ServiceOrder.id)
+    ):
+        out.setdefault(o.kind, o.requested_on)
+    return out
+
+
+_SERVICE_ACTIONS = {"stop_service": "stop", "transfer_service": "transfer"}
+
+
+def _awaiting_approval_kinds(
+    s: Session, conversation_id: str, account_id: str, action: str, args: dict[str, str], current: str | None
+) -> tuple[str, ...]:
+    """Kinds of other stop or transfer requests on this account waiting for (or holding) an approval.
+
+    P-22 counts them like scheduled orders, so a stop and a transfer cannot both sit in the supervisor
+    queue. The same request retried in the same conversation is not "other": `enforce` hands back its
+    existing approval id instead. `current` is the approval being executed, if any.
+    """
+    rows = s.scalars(
+        select(m.ApprovalRequest).where(
+            m.ApprovalRequest.account_id == account_id,
+            m.ApprovalRequest.action.in_(tuple(_SERVICE_ACTIONS)),
+            m.ApprovalRequest.status.in_(("pending", "approved")),
+        )
+    )
+    kinds = []
+    for r in rows:
+        if r.id == current:
+            continue
+        same = r.conversation_id == conversation_id and r.action == action and r.arguments == args
+        if same and r.status == "pending":
+            continue
+        kinds.append(_SERVICE_ACTIONS[r.action])
+    return tuple(sorted(set(kinds)))
 
 
 def stop_service(
@@ -326,6 +419,10 @@ def stop_service(
             requested_on=when,
             open_order_kinds=open_order_kinds(s, acct.id),
             approved=approval is not None,
+            open_order_dates=_open_order_dates(s, acct.id),
+            awaiting_approval_kinds=_awaiting_approval_kinds(
+                s, conversation_id, acct.id, "stop_service", args, approval_request_id
+            ),
         )
         enforce(
             s,
@@ -383,9 +480,13 @@ def transfer_service(
             requested_on=when,
             open_order_kinds=open_order_kinds(s, acct.id),
             approved=approval is not None,
+            open_order_dates=_open_order_dates(s, acct.id),
+            awaiting_approval_kinds=_awaiting_approval_kinds(
+                s, conversation_id, acct.id, "transfer_service", args, approval_request_id
+            ),
         )
         start = rules.StartFacts(
-            address_has_active_account=_address_active(s, addr.id),
+            address_has_active_account=_address_active(s, addr.id, when),
             requested_on=when,
             customer_past_due_unplanned=_past_due_unplanned(s, acct.customer_id),
         )

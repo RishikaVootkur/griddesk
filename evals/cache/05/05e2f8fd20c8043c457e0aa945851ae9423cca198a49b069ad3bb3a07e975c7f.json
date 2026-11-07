@@ -1,0 +1,19 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_6ytlhbfa",
+   "name": "verify_identity",
+   "arguments": {
+    "account_id": "100036",
+    "last_name": "Rose",
+    "date_of_birth": "1974-10-13"
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 3842,
+  "output_tokens": 45
+ },
+ "latency_ms": 44050.6
+}

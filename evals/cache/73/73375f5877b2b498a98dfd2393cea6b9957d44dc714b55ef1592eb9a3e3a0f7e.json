@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Could you tell me what my current account balance is?",
+ "usage": {
+  "input_tokens": 591,
+  "output_tokens": 26
+ },
+ "latency_ms": 482.5,
+ "cost_usd": 0.00010424999999999999
+}

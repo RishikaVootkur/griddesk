@@ -6,10 +6,11 @@ never names who lives there. Reports link to an account only when the verified c
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from griddesk.db import models as m
@@ -77,17 +78,57 @@ def _outage_out(o: m.Outage) -> OutageOut:
     )
 
 
-def find_address(s: Session, street: str, zip_code: str | None) -> m.ServiceAddress:
-    """Match a street address loosely (case, spacing, punctuation). Requires the house number."""
+_UNIT = re.compile(
+    r"^(?P<street>.*?)[\s,]+(?:apt|apartment|unit|suite|ste|#)\.?\s*#?\s*(?P<unit>[a-z0-9-]+)$", re.I
+)
+
+
+def _norm_unit(unit: str) -> str:
+    """'Apt 3', 'apt. 3', 'Unit 3' and '#3' all normalize to '3'."""
+    key = "".join(ch for ch in unit.lower() if ch.isalnum())
+    for word in ("apartment", "apt", "unit", "suite", "ste"):
+        if key.startswith(word) and key != word:
+            return key[len(word) :]
+    return key
+
+
+def address_line(addr: m.ServiceAddress) -> str:
+    return f"{addr.street}{', ' + addr.unit if addr.unit else ''}, {addr.city} {addr.zip}"
+
+
+def find_address(s: Session, street: str, zip_code: str | None, unit: str | None = None) -> m.ServiceAddress:
+    """Match a street address loosely (case, spacing, punctuation). Requires the house number.
+
+    A unit can come as its own argument or at the end of the street ("412 Maple Ave Apt 3"). When
+    several units share the street address and none was given, the lookup refuses as ambiguous and
+    lists the units (never who lives in them), so a tool never silently acts on the wrong unit.
+    """
+    if not unit and (mk := _UNIT.match(street.strip())):
+        street, unit = mk.group("street"), mk.group("unit")
     norm = func.regexp_replace(func.lower(m.ServiceAddress.street), "[^a-z0-9]", "", "g")
     key = "".join(ch for ch in street.lower() if ch.isalnum())
     stmt = select(m.ServiceAddress).where(norm == key)
     if zip_code:
         stmt = stmt.where(m.ServiceAddress.zip == zip_code.strip())
-    rows = s.scalars(stmt.order_by(m.ServiceAddress.id)).all()
+    rows = list(s.scalars(stmt.order_by(m.ServiceAddress.id)).all())
+    if unit:
+        want = _norm_unit(unit)
+        rows = [r for r in rows if r.unit and _norm_unit(r.unit) == want]
     if not rows:
         raise PolicyStop(
-            ToolError(code="not_found", message="No service address matches that street and ZIP.")
+            ToolError(code="not_found", message="No service address matches that street, unit and ZIP.")
+        )
+    if len(rows) > 1:
+        units = sorted({r.unit or "(no unit)" for r in rows})
+        zips = sorted({r.zip for r in rows})
+        where = f" Units: {', '.join(units)}." if len(units) > 1 else ""
+        if len(zips) > 1:
+            where += f" ZIP codes: {', '.join(zips)}."
+        raise PolicyStop(
+            ToolError(
+                code="ambiguous",
+                message=f"More than one service address matches.{where} Ask which one and pass it.",
+            )
         )
     return rows[0]
 
@@ -101,10 +142,10 @@ def _active_outage(s: Session, feeder: str) -> m.Outage | None:
 
 
 def lookup_outage(
-    ctx: ToolContext, conversation_id: str, street: str, zip_code: str | None = None
+    ctx: ToolContext, conversation_id: str, street: str, zip_code: str | None = None, unit: str | None = None
 ) -> AddressOutageStatus:
     with ctx.sessions() as s:
-        addr = find_address(s, street, zip_code)
+        addr = find_address(s, street, zip_code, unit)
         active = _active_outage(s, addr.feeder)
         recent = s.scalars(
             select(m.Outage)
@@ -115,7 +156,7 @@ def lookup_outage(
         audit(s, ctx, conversation_id, "lookup_outage", "ok", None, details={"address": addr.id})
         s.commit()
         return AddressOutageStatus(
-            address=f"{addr.street}{', ' + addr.unit if addr.unit else ''}, {addr.city} {addr.zip}",
+            address=address_line(addr),
             service_address_id=addr.id,
             active_outage=_outage_out(active) if active else None,
             recent_outages=[_outage_out(o) for o in recent],
@@ -130,11 +171,12 @@ def report_outage(
     description: str,
     hazard: bool = False,
     account_id: str | None = None,
+    unit: str | None = None,
 ) -> ReportOut:
     from griddesk.logging import redact_text
 
     with ctx.sessions() as s:
-        addr = find_address(s, street, zip_code)
+        addr = find_address(s, street, zip_code, unit)
         linked = None
         if account_id:
             acct = s.get(m.Account, account_id.strip())
@@ -146,15 +188,15 @@ def report_outage(
                 linked = acct.id
         active = _active_outage(s, addr.feeder)
         if active is not None:
+            # P-26: one report per address (and per account at it) per outage, whether or not the
+            # earlier report was linked to an account, so the answer never depends on who reported.
+            same = m.OutageReport.service_address_id == addr.id
+            if linked:
+                same = or_(same, m.OutageReport.account_id == linked)
             dup = s.scalar(
                 select(func.count())
                 .select_from(m.OutageReport)
-                .where(
-                    m.OutageReport.outage_id == active.id,
-                    (m.OutageReport.account_id == linked)
-                    if linked
-                    else (m.OutageReport.service_address_id == addr.id),
-                )
+                .where(m.OutageReport.outage_id == active.id, same)
             )
             enforce(
                 s,

@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I apologize for the confusion. To schedule a meter check, I need to verify your identity again. Could you please provide your date of birth or the last four digits of your SSN?",
- "usage": {
-  "input_tokens": 2094,
-  "output_tokens": 39
- },
- "latency_ms": 4568.8
-}

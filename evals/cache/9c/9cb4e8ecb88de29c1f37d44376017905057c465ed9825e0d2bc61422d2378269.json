@@ -1,0 +1,19 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_75dpjint",
+   "name": "verify_identity",
+   "arguments": {
+    "account_id": "102652",
+    "last_name": "Davis",
+    "ssn_last4": "3695"
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 3883,
+  "output_tokens": 40
+ },
+ "latency_ms": 31456.8
+}

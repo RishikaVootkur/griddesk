@@ -27,6 +27,7 @@ BILLING_TOOLS = (
 )
 OUTAGE_TOOLS = ("lookup_outage", "report_outage", "get_restoration_estimate")
 ACCOUNT_TOOLS = (
+    "get_account_summary",  # open orders and their dates, for P-22
     "get_contact_info",
     "update_contact_info",
     "set_paperless",
@@ -47,7 +48,7 @@ def agent_specs(design: Design) -> tuple[list[AgentSpec], str]:
     account specialists, each holding only its own tools (least privilege), with handoffs between them.
     """
     if design == "single":
-        tools = COMMON_TOOLS + BILLING_TOOLS + OUTAGE_TOOLS + ACCOUNT_TOOLS
+        tools = tuple(dict.fromkeys(COMMON_TOOLS + BILLING_TOOLS + OUTAGE_TOOLS + ACCOUNT_TOOLS))
         return [AgentSpec("agent", "all", tools, "all customer requests")], "agent"
     return [
         AgentSpec("triage", "triage", ("search_policy", "escalate_to_human"), "routes the customer"),

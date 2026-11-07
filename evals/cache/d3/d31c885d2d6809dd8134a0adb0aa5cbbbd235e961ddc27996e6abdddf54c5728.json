@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Arellano, 3182",
+ "usage": {
+  "input_tokens": 556,
+  "output_tokens": 27
+ },
+ "latency_ms": 690.7,
+ "cost_usd": 0.0000996
+}

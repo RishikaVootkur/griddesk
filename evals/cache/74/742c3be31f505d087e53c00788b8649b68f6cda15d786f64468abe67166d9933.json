@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I'll need the bill ID to process the late fee waiver. Could you check the bill for the bill ID or provide more details about the bill, such as any reference numbers or specific line items?",
+ "usage": {
+  "input_tokens": 4266,
+  "output_tokens": 41
+ },
+ "latency_ms": 9747.1
+}

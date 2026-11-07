@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I'm sorry, but I can't make exceptions to our policies. We can only waive one late fee per 12 months, and that was already done in June 2026. Let me know if there's anything else I can help with!",
- "usage": {
-  "input_tokens": 2747,
-  "output_tokens": 54
- },
- "latency_ms": 9181.0
-}

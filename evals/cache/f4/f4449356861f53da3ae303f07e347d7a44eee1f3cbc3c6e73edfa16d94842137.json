@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I apologize for the confusion. To process the late fee waiver, I need the amount of the late fee listed on your March 15, 2024 bill. Could you please provide that detail?",
- "usage": {
-  "input_tokens": 2402,
-  "output_tokens": 44
- },
- "latency_ms": 10278.6
-}
