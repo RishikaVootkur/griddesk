@@ -343,3 +343,46 @@ async def test_specialist_cannot_call_another_specialists_tool(sessions):
     await runner.send("conv-m2", "stop my service")
     assert tb.calls[-1].tool == "stop_service" and tb.calls[-1].known_tool is False
     await tb.close()
+
+
+async def test_promised_handoff_without_a_transfer_call_is_nudged_once(sessions):
+    ctx = make_ctx(sessions)
+    runner, tb, fake = await multi_runner(
+        ctx,
+        [
+            say("Let me connect you with our account specialist."),
+            use("transfer_to_account", 1, reason="paperless"),
+            say("Happy to help with paperless. What is your account number?"),
+        ],
+    )
+    res = await runner.send("conv-n1", "I want paperless billing.")
+    assert [h["to"] for h in tb.handoffs] == ["account"] and res.agents[-1] == "account"
+    assert res.reply.endswith("What is your account number?")
+    assert "did not call a transfer_to_* tool" in fake.requests[1].messages[-1].content
+    await tb.close()
+
+
+async def test_nudge_fires_at_most_once_a_turn(sessions):
+    ctx = make_ctx(sessions)
+    runner, tb, fake = await multi_runner(
+        ctx,
+        [
+            say("Let me connect you with our billing team."),
+            say("I'll connect you with our billing specialist shortly."),
+            say("Let me connect you with our billing team."),
+            say("Sorry, what do you need help with?"),
+        ],
+    )
+    await runner.send("conv-n2", "question about my bill")
+    assert len(fake.requests) == 2 and not tb.handoffs  # nudged once, then the turn ends
+    await runner.send("conv-n2", "hello?")
+    assert len(fake.requests) == 4  # the flag resets each customer turn
+    await tb.close()
+
+
+async def test_single_agent_is_never_nudged(sessions):
+    ctx = make_ctx(sessions)
+    runner, tb, fake = await runner_for(ctx, [say("Let me connect you with our billing team.")])
+    await runner.send("conv-n3", "question about my bill")
+    assert len(fake.requests) == 1
+    await tb.close()

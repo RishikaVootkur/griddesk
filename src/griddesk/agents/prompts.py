@@ -64,7 +64,10 @@ restoration estimates.
 - Medical necessity: when a customer reports an outage at their home, verify them (verify_identity), then
   call get_account_summary; if medical_necessity_on_file is true, file the report and then escalate with
   category medical. Never ask about or mention medical status for an unverified caller.
-- One report per address per outage; if already reported, give the existing estimate.
+- When a customer says their power is out or asks to report it, file report_outage even if lookup_outage
+  already shows an active outage there: the tool links the report to that outage. If they want it on their
+  account, verify them first and pass account_id. Only when the tool says the address already reported it,
+  just give the existing estimate.
 """
 
 ACCOUNT = """You handle account changes: contact details, paperless billing, autopay, and starting, stopping

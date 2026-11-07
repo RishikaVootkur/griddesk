@@ -2,6 +2,7 @@
 
     START -> agent --tool calls--> tools -> agent ...
                    --approval pending--> approval (interrupt; resumes on operator decision) -> agent
+                   --plain reply that promises a transfer, no transfer call--> nudge -> agent (once a turn)
                    --plain reply--> END (wait for the customer's next message)
 
 One graph invocation is one customer turn. State is checkpointed per conversation (`thread_id`), so
@@ -30,6 +31,22 @@ from griddesk.observability.tracing import set_attrs, span
 HANDOFF_PREFIX = "transfer_to_"
 RUNTIME_NOTICE = "RUNTIME NOTICE (from the GridDesk system, not the customer): "
 _NOTICE_LOOKALIKE = re.compile(r"runtime\s*notice", re.IGNORECASE)
+# "Let me connect you with our account specialist" said without calling transfer_to_account leaves the
+# customer with nobody. Error analysis found this on paperless and hazard tasks in the multi-agent design.
+_PROMISED_HANDOFF = re.compile(
+    r"\b(connect(ing)?|transfer(ring)?|hand(ing)?|pass(ing)?|put(ting)?|send(ing)?)\s+you\b"
+    r"[^.!?]{0,60}\b(specialist|team|department|colleague|billing|outages?|account)\b",
+    re.IGNORECASE,
+)
+NUDGE_NOTE = (
+    "You told the customer you would hand them to a specialist, but you did not call a transfer_to_* tool, "
+    "so nobody has picked up the request. Call the right transfer_to_* tool now. Do not repeat your last "
+    "message to the customer."
+)
+
+
+def promises_handoff(text: str) -> bool:
+    return bool(_PROMISED_HANDOFF.search(text or ""))
 
 
 def neutralize_customer_text(text: str) -> str:
@@ -61,6 +78,7 @@ class ConvState(TypedDict, total=False):
     agent: str
     steps: int
     pending: list[dict[str, str]]  # approvals waiting for an operator, oldest first
+    nudged: bool  # a promised-but-missing handoff was already flagged this turn
     error: str | None
 
 
@@ -189,20 +207,31 @@ def build_graph(
             "steps": 0,
         }
 
-    def after_agent(state: ConvState) -> Literal["tools", "approval", "__end__"]:
+    def nudge_node(state: ConvState) -> dict[str, Any]:
+        return {"messages": [{"role": "user", "content": RUNTIME_NOTICE + NUDGE_NOTE}], "nudged": True}
+
+    def after_agent(state: ConvState) -> Literal["tools", "approval", "nudge", "__end__"]:
         last = state["messages"][-1]
-        if last.get("tool_calls") and state.get("steps", 0) <= config.max_steps_per_turn:
+        steps = state.get("steps", 0)
+        if last.get("tool_calls") and steps <= config.max_steps_per_turn:
             return "tools"
         if state.get("pending"):
             return "approval"
+        can_hand_off = len(specs) > 1 and steps < config.max_steps_per_turn and not state.get("error")
+        if can_hand_off and not state.get("nudged") and promises_handoff(str(last.get("content") or "")):
+            return "nudge"
         return "__end__"
 
     g = StateGraph(ConvState)
     g.add_node("agent", agent_node)
     g.add_node("tools", tools_node)
     g.add_node("approval", approval_node)
+    g.add_node("nudge", nudge_node)
     g.add_edge(START, "agent")
-    g.add_conditional_edges("agent", after_agent, {"tools": "tools", "approval": "approval", "__end__": END})
+    g.add_conditional_edges(
+        "agent", after_agent, {"tools": "tools", "approval": "approval", "nudge": "nudge", "__end__": END}
+    )
     g.add_edge("tools", "agent")
     g.add_edge("approval", "agent")
+    g.add_edge("nudge", "agent")
     return g.compile(checkpointer=checkpointer)
