@@ -54,6 +54,21 @@ eval_app = typer.Typer(help="Run and compare evaluations.", no_args_is_help=True
 app.add_typer(eval_app, name="eval")
 
 
+def setup_logging() -> str:
+    """Configure structured logging and install the PII redactor from settings; return its name.
+
+    Every command that runs agents or tools calls this first, so logs, run files and audit details
+    are redacted by Presidio (or the regex fallback when `PII_REDACTOR=regex`).
+    """
+    from griddesk.config import get_settings
+    from griddesk.guardrails.pii import install_from_settings
+    from griddesk.logging import configure_logging
+
+    settings = get_settings()
+    configure_logging(settings.log_level, settings.log_json)
+    return install_from_settings(settings)
+
+
 _last_gateway: Any = None
 
 
@@ -74,6 +89,8 @@ def execute_suite(
 ) -> dict[str, Any]:
     """Load tasks, run them, return the run dict (shared by `eval run` and `eval gate`)."""
     import asyncio
+
+    setup_logging()
 
     from griddesk.agents.runtime import Design
     from griddesk.config import REPO_ROOT

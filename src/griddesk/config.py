@@ -19,6 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 CacheMode = Literal["off", "read_write", "replay_only"]
+PiiRedactor = Literal["presidio", "regex"]
 
 
 class Settings(BaseSettings):
@@ -45,6 +46,8 @@ class Settings(BaseSettings):
 
     log_level: LogLevel = "INFO"
     log_json: bool = False
+    # Redactor for logs, run files and audit details: Presidio (names too) or the regex-only fallback.
+    pii_redactor: PiiRedactor = "presidio"
 
     @field_validator("log_level", mode="before")
     @classmethod

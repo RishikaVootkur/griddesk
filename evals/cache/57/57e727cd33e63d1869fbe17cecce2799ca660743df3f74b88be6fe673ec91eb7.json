@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "We have initiated a review of your bill regarding the duplicate monthly customer charge. A specialist will contact you to resolve this issue. Thank you for your patience!",
- "usage": {
-  "input_tokens": 4363,
-  "output_tokens": 32
- },
- "latency_ms": 37465.5
-}

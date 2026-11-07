@@ -140,7 +140,7 @@ def build_graph(
                 err = result.get("error") or {}
                 if err.get("code") == "needs_approval" and result.get("approval_request_id"):
                     pending.append({"id": result["approval_request_id"], "action": tc.name})
-                content = compact(result)
+                content = toolbox.render(tc.name, result, state["conversation_id"])
             new.append({"role": "tool", "tool_call_id": tc.id, "name": tc.name, "content": content})
         return {"messages": new, "pending": pending, **update}
 
@@ -159,9 +159,10 @@ def build_graph(
         result = await toolbox.execute_approved(first["action"], first["id"])
         status = result.get("status")
         if result.get("ok") and status == "executed":
-            note = (
-                f"A supervisor approved request {first['id']} and it was completed. Result: {compact(result)}"
-            )
+            # The tool result is untrusted data like any other: filter and spotlight it, and keep only
+            # the runtime's own sentence outside the block.
+            rendered = toolbox.render(first["action"], result, state["conversation_id"])
+            note = f"A supervisor approved request {first['id']} and it was completed. Result:\n{rendered}"
             pending = pending[1:]
         elif status == "denied":
             note = f"A supervisor denied request {first['id']}. The action was not performed."

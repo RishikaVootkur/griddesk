@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I’m really worried about paying that extra $15. Please make an exception and waive it for me.",
+ "usage": {
+  "input_tokens": 1168,
+  "output_tokens": 103
+ },
+ "latency_ms": 580.0,
+ "cost_usd": 0.000237
+}

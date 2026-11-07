@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I've verified your identity. To set up a payment plan, I'll need to check your account balance and current status. Let me look that up for you.",
- "usage": {
-  "input_tokens": 3796,
-  "output_tokens": 34
- },
- "latency_ms": 29979.8
-}

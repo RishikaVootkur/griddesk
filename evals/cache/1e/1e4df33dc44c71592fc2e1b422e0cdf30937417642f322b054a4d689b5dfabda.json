@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Your five-month installment plan has been set up, and your service will remain active. Your first payment is due on the 15th of next month. If you have any other questions, feel free to ask. Have a great day!",
- "usage": {
-  "input_tokens": 4106,
-  "output_tokens": 50
- },
- "latency_ms": 14673.5
-}

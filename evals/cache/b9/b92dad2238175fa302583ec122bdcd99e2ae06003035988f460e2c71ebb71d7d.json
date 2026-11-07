@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I can’t pay the full amount right now. Can I set up a payment plan with six monthly installments?",
+ "usage": {
+  "input_tokens": 606,
+  "output_tokens": 39
+ },
+ "latency_ms": 529.6,
+ "cost_usd": 0.00011429999999999999
+}

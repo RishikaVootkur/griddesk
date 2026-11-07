@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I apologize for the inconvenience. To provide your current balance, I need to verify your identity first. Could you please share the last four digits of your Social Security Number?",
- "usage": {
-  "input_tokens": 4035,
-  "output_tokens": 35
- },
- "latency_ms": 37300.6
-}

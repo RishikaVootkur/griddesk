@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Great, I've verified your identity. Let me check your latest bill to see what's causing the fees. One moment please.",
- "usage": {
-  "input_tokens": 3873,
-  "output_tokens": 27
- },
- "latency_ms": 15828.6
-}

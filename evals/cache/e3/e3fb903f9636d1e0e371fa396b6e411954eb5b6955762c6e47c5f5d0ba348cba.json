@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I understand. Let me check your account details using the information we have. One moment, please.",
- "usage": {
-  "input_tokens": 4211,
-  "output_tokens": 21
- },
- "latency_ms": 28568.9
-}

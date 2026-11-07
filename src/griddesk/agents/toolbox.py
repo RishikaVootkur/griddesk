@@ -19,8 +19,11 @@ from mcp import Client
 from mcp.server.mcpserver import MCPServer
 
 from griddesk.gateway import ToolSpec
+from griddesk.guardrails.action_guard import ActionGuard
+from griddesk.guardrails.injection import filter_result, spotlight
 from griddesk.logging import redact_value
 from griddesk.mcp_servers.common import INTERNAL_KEY
+from griddesk.policy.rules import Outcome
 
 RUNTIME_ARGS = {"conversation_id"}
 SENSITIVE_ARGS = {"date_of_birth", "ssn_last4"}
@@ -49,6 +52,10 @@ class Toolbox:
     internal: dict[str, set[str]] = field(default_factory=dict)  # server -> runtime-only tool names
     calls: list[ToolCallLog] = field(default_factory=list)
     handoffs: list[dict[str, Any]] = field(default_factory=list)
+    guard: ActionGuard | None = None
+    spotlight: bool = True
+    injection_filter: bool = True
+    guardrail_events: list[dict[str, Any]] = field(default_factory=list)
     _stack: AsyncExitStack | None = None
 
     @classmethod
@@ -103,6 +110,76 @@ class Toolbox:
                 "ok": False,
                 "error": {"code": "invalid_request", "message": f"No tool named {name} here."},
             }
+        if self.guard is not None:
+            decision = self.guard.check(name, args, conversation_id)
+            if decision.outcome is Outcome.NEEDS_APPROVAL:
+                # With in-tool enforcement on, the tool parks the action itself; otherwise the guard does.
+                apr = None
+                if self.guard.park_approvals:
+                    apr = self.guard.park(name, args, conversation_id, decision)
+                if apr is not None:
+                    self.guardrail_events.append(
+                        {
+                            "conversation_id": conversation_id,
+                            "guard": "action",
+                            "tool": name,
+                            "rule_id": decision.rule_id,
+                            "approval_request_id": apr,
+                        }
+                    )
+                    self.calls.append(
+                        ToolCallLog(
+                            conversation_id,
+                            agent,
+                            name,
+                            logged,
+                            True,
+                            True,
+                            False,
+                            "needs_approval",
+                            decision.rule_id,
+                        )
+                    )
+                    return {
+                        "ok": False,
+                        "error": {
+                            "code": "needs_approval",
+                            "rule_id": decision.rule_id,
+                            "message": f"{decision.message} Sent to a supervisor for approval.",
+                        },
+                        "approval_request_id": apr,
+                    }
+            elif not decision.allowed:
+                self.guard.record_block(name, decision, conversation_id, args.get("account_id"))
+                self.guardrail_events.append(
+                    {
+                        "conversation_id": conversation_id,
+                        "guard": "action",
+                        "tool": name,
+                        "rule_id": decision.rule_id,
+                    }
+                )
+                self.calls.append(
+                    ToolCallLog(
+                        conversation_id,
+                        agent,
+                        name,
+                        logged,
+                        True,
+                        True,
+                        False,
+                        "guard_blocked",
+                        decision.rule_id,
+                    )
+                )
+                return {
+                    "ok": False,
+                    "error": {
+                        "code": "policy_denied",
+                        "rule_id": decision.rule_id,
+                        "message": f"{decision.message} (blocked before execution)",
+                    },
+                }
         client = self.clients[self.server_of[name]]
         props = self.specs[name].parameters.get("properties", {})
         # Every model-facing GridDesk tool takes conversation_id; the runtime value always wins.
@@ -134,6 +211,22 @@ class Toolbox:
             )
         )
         return out
+
+    def render(self, name: str, result: dict[str, Any], conversation_id: str) -> str:
+        """Turn a tool result into the text the model sees, applying the injection defenses."""
+        if self.injection_filter:
+            result, hits = filter_result(name, result)
+            if hits:
+                self.guardrail_events.append(
+                    {
+                        "conversation_id": conversation_id,
+                        "guard": "injection_filter",
+                        "tool": name,
+                        "patterns": sorted(set(hits)),
+                    }
+                )
+        payload = compact(result)
+        return spotlight(name, payload) if self.spotlight else payload
 
     async def execute_approved(self, action: str, approval_request_id: str) -> dict[str, Any]:
         """Run an operator-approved action on the server that owns it (runtime only)."""

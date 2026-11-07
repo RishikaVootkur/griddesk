@@ -114,7 +114,7 @@ async def test_approval_pauses_the_graph_and_resumes_on_decision(sessions):
     ctx = make_ctx(sessions)
     acct = one(ctx, WAIVABLE)
     cust = one(ctx, "select last_name, ssn_last4 from customers where id = :c", c=acct.customer_id)
-    runner, tb, _ = await runner_for(
+    runner, tb, fake = await runner_for(
         ctx,
         [
             use("verify_identity", 1, account_id=acct.id, last_name=cust.last_name, ssn_last4=cust.ssn_last4),
@@ -129,6 +129,12 @@ async def test_approval_pauses_the_graph_and_resumes_on_decision(sessions):
     approvals.decide(ctx, first.awaiting_approval["approval_request_id"], "approve", operator="op")
     second = await runner.resume("conv-c")
     assert second.reply.startswith("Good news") and second.awaiting_approval is None
+    # The approved action's result goes through the same filter and spotlight as any tool result.
+    notice = fake.requests[-1].messages[-1]
+    assert notice.role == "user" and "and it was completed. Result:\n" in notice.content
+    block = notice.content.split("Result:\n", 1)[1]
+    assert block.startswith('<tool_result tool="apply_credit" trust="untrusted-data">')
+    assert block.count("</tool_result>") == 1
     with ctx.sessions() as s:
         credit = s.scalars(select(m.Credit).where(m.Credit.conversation_id == "conv-c")).one()
     assert credit.amount == 40

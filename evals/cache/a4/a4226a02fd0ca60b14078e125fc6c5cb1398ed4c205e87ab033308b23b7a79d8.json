@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "We have scheduled a meter check for your account. A technician will visit your address on 2026-10-18 to verify the meter reading. You will receive a confirmation once the check is completed. Let me know if you need anything else!",
+ "usage": {
+  "input_tokens": 4350,
+  "output_tokens": 55
+ },
+ "latency_ms": 61259.9
+}

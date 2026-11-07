@@ -1,0 +1,17 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_6oc9es5s",
+   "name": "get_account_summary",
+   "arguments": {
+    "account_id": "100021"
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 3929,
+  "output_tokens": 26
+ },
+ "latency_ms": 29953.8
+}

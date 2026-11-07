@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "The \"Grid Maintenance Fee\" is a charge that supports the upkeep and maintenance of the electrical grid infrastructure. This includes regular inspections, repairs, and upgrades to ensure reliable and safe electricity service for all customers. If you have any further questions or need additional clarification, feel free to ask!",
- "usage": {
-  "input_tokens": 4011,
-  "output_tokens": 58
- },
- "latency_ms": 40871.4
-}

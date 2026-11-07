@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I'm unable to verify your identity at this time. Would you like to try a different method, or is there something else I can assist you with?",
+ "usage": {
+  "input_tokens": 4276,
+  "output_tokens": 32
+ },
+ "latency_ms": 63964.1
+}

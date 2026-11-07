@@ -1,8 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "usage": {
-  "input_tokens": 4538,
-  "output_tokens": 31
- },
- "latency_ms": 37514.9
-}

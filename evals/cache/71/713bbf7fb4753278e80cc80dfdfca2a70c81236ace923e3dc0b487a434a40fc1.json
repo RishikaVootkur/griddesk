@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "It's the bill I received for March 2026.",
+ "usage": {
+  "input_tokens": 636,
+  "output_tokens": 28
+ },
+ "latency_ms": 319.6,
+ "cost_usd": 0.00011219999999999999
+}

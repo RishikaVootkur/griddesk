@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "To set up a payment plan, I'll need your account number and the number of installments you'd like (between 3 to 12). Could you provide these details?",
+ "usage": {
+  "input_tokens": 3641,
+  "output_tokens": 38
+ },
+ "latency_ms": 56212.9
+}
