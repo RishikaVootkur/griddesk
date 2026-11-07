@@ -1,5 +1,5 @@
-# Core-30: a stratified sample of the 86-task suite (domain x difficulty, proportional),
-# used where free-tier quotas cannot cover every task on every model. Built deterministically.
+# A stratified sample of the task suite (domain x difficulty, proportional).
+# Rebuild with `griddesk eval build-subset`; tests/test_subsets.py checks it is current.
 accounts-autopay-off-01
 accounts-autopay-on-refused-02
 accounts-email-invalid-01

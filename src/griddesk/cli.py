@@ -115,6 +115,9 @@ def execute_suite(
     selected = load_tasks(suite_path)
     if task_ids:
         wanted = set(task_ids)
+        unknown = wanted - {t.id for t in selected}
+        if unknown:
+            raise typer.BadParameter(f"unknown task ids: {sorted(unknown)}")
         selected = [t for t in selected if t.id in wanted]
     if limit:
         selected = selected[:limit]
@@ -319,6 +322,22 @@ def _all_tasks() -> dict[str, Any]:
     return out
 
 
+@eval_app.command("build-subset")
+def eval_build_subset(
+    n: int = typer.Option(30, help="How many tasks."),
+    out: Path = typer.Option(Path("evals/subsets/core-30.txt")),
+) -> None:
+    """Write a deterministic stratified subset of evals/tasks (domain x difficulty)."""
+    from griddesk.config import REPO_ROOT
+    from griddesk.eval.subsets import render, stratified
+    from griddesk.eval.tasks import load_tasks
+
+    ids = stratified(load_tasks(REPO_ROOT / "evals" / "tasks"), n)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(render(ids))
+    typer.echo(f"wrote {len(ids)} task ids to {out}")
+
+
 @eval_app.command("analyze")
 def eval_analyze(
     run_file: Path,
@@ -345,7 +364,9 @@ def eval_analyze(
 @eval_app.command("validate-sim")
 def eval_validate_sim(
     run_files: list[Path],
-    judge: str = typer.Option("gemini:gemini-3.5-flash-lite", help="Judge model (a third family)."),
+    judge: str = typer.Option(
+        "groq:qwen/qwen3.8-27b", help="Judge model; must differ from the simulator's family (gpt-oss)."
+    ),
     n: int = typer.Option(30),
     out: Path = typer.Option(Path("evals/analysis/simulator-validation.json")),
 ) -> None:
