@@ -25,6 +25,7 @@ from langgraph.types import interrupt
 from griddesk.agents.prompts import system_prompt
 from griddesk.agents.toolbox import Toolbox, compact
 from griddesk.gateway import BudgetExceeded, Gateway, LLMRequest, Message, ProviderError, ToolSpec
+from griddesk.observability.tracing import set_attrs, span
 
 HANDOFF_PREFIX = "transfer_to_"
 RUNTIME_NOTICE = "RUNTIME NOTICE (from the GridDesk system, not the customer): "
@@ -129,6 +130,15 @@ def build_graph(
                 update["agent"] = target
                 content = compact({"ok": True, "handoff": target, "note": "Continue as the new specialist."})
                 toolbox.record_handoff(state["conversation_id"], spec.name, target, tc.arguments)
+                with span(f"handoff {spec.name} -> {target}", kind="CHAIN") as sp:
+                    set_attrs(
+                        sp,
+                        {
+                            "griddesk.handoff.from": spec.name,
+                            "griddesk.handoff.to": target,
+                            "griddesk.handoff.reason": str(tc.arguments.get("reason", ""))[:200],
+                        },
+                    )
             else:
                 result = await toolbox.call(
                     tc.name,

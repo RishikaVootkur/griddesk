@@ -44,7 +44,7 @@ const AGENT_STYLES: Record<string, string> = {
   triage: "bg-slate-100 text-slate-700 ring-slate-200",
   billing: "bg-brand-50 text-brand-700 ring-brand-200",
   outages: "bg-amber-soft text-amber-ink ring-amber-200",
-  accounts: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  account: "bg-emerald-50 text-emerald-800 ring-emerald-200",
 };
 
 export function AgentBadge({ agent }: { agent: string | null | undefined }) {

@@ -28,6 +28,7 @@ from griddesk.gateway.types import (
     LLMResponse,
     ProviderError,
 )
+from griddesk.observability.tracing import record_llm_call, span
 
 DEFAULT_CHAIN = ["gemini:gemini-3.5-flash-lite", "groq:qwen/qwen3.8-27b", "ollama:qwen3:8b"]
 
@@ -148,6 +149,28 @@ class Gateway:
             raise BudgetExceeded(
                 f"conversation used {self.tokens_used(conversation_id)} of {self.conversation_budget} tokens"
             )
+        with span(f"chat {req.model}", kind="LLM") as sp:
+            resp = await self._complete_chain(req, conversation_id, namespace, fallbacks)
+            record_llm_call(
+                sp,
+                provider=resp.model.split(":", 1)[0],
+                request_model=req.model,
+                response_model=resp.model,
+                input_tokens=resp.usage.input_tokens,
+                output_tokens=resp.usage.output_tokens,
+                latency_ms=resp.latency_ms,
+                cost_usd=resp.cost_usd,
+                cached=resp.cached,
+                attempts=resp.attempts,
+                temperature=req.temperature,
+                conversation_id=conversation_id,
+                output_preview=resp.content or ",".join(tc.name for tc in resp.tool_calls),
+            )
+            return resp
+
+    async def _complete_chain(
+        self, req: LLMRequest, conversation_id: str | None, namespace: str, fallbacks: list[str] | None
+    ) -> LLMResponse:
         chain = [req.model, *(fallbacks or [])]
         last_error: Exception | None = None
         misses: list[str] = []

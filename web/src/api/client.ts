@@ -4,6 +4,7 @@
 //   static build: eval endpoints read ./eval-data.json; other endpoints are unavailable
 
 import { API_BASE, MOCK_MODE, STATIC_MODE } from "../lib/env";
+import { operatorToken } from "../lib/operatorToken";
 import { readSse } from "../lib/sse";
 import { mockApi } from "./mock";
 import type {
@@ -15,6 +16,7 @@ import type {
   DecisionResult,
   EvalRunDetail,
   EvalRunSummary,
+  NewConversation,
   StaticEvalData,
   StreamEvent,
 } from "./types";
@@ -28,11 +30,14 @@ export class ApiError extends Error {
   }
 }
 
+export const CONVERSATION_TOKEN_HEADER = "X-Conversation-Token";
+
 export interface Api {
-  createConversation(signal?: AbortSignal): Promise<string>;
-  sendMessage(conversationId: string, text: string, signal?: AbortSignal): AsyncGenerator<StreamEvent>;
+  createConversation(signal?: AbortSignal): Promise<NewConversation>;
+  sendMessage(conversation: NewConversation, text: string, signal?: AbortSignal): AsyncGenerator<StreamEvent>;
   listConversations(): Promise<ConversationSummary[]>;
-  getConversation(conversationId: string): Promise<ConversationDetail>;
+  /** With the conversation's token as its customer; without one as the operator. */
+  getConversation(conversationId: string, token?: string): Promise<ConversationDetail>;
   listApprovals(): Promise<ApprovalRequest[]>;
   decide(approvalId: string, decision: Decision, operator: string): Promise<DecisionResult>;
   listAudit(outcome?: string, limit?: number): Promise<AuditEntry[]>;
@@ -57,6 +62,14 @@ async function errorMessage(res: Response): Promise<string> {
   return `${res.status} ${res.statusText || "request failed"}`;
 }
 
+/** Headers for operator endpoints: the bearer token entered in the console, if any. */
+function operatorHeaders(): Record<string, string> {
+  const token = operatorToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+const conversationHeaders = (token: string): Record<string, string> => ({ [CONVERSATION_TOKEN_HEADER]: token });
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -75,7 +88,7 @@ function parseStreamEvent(event: string, data: string): StreamEvent | null {
   }
   switch (event) {
     case "agent":
-      return { type: "agent", text: String(payload.text ?? ""), agent: String(payload.agent ?? "agent") };
+      return { type: "agent", text: String(payload.text ?? ""), agent: payload.agent == null ? null : String(payload.agent) };
     case "approval":
       return {
         type: "approval",
@@ -123,15 +136,12 @@ const staticUnavailable = (): never => {
 };
 
 export const httpApi: Api = {
-  async createConversation(signal) {
-    const r = await request<{ conversation_id: string }>("/conversations", { method: "POST", body: "{}", signal });
-    return r.conversation_id;
-  },
+  createConversation: (signal) => request<NewConversation>("/conversations", { method: "POST", body: "{}", signal }),
 
-  async *sendMessage(conversationId, text, signal) {
-    const res = await fetch(`${API_BASE}/conversations/${encodeURIComponent(conversationId)}/messages`, {
+  async *sendMessage(conversation, text, signal) {
+    const res = await fetch(`${API_BASE}/conversations/${encodeURIComponent(conversation.conversation_id)}/messages`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+      headers: { "Content-Type": "application/json", Accept: "text/event-stream", ...conversationHeaders(conversation.token) },
       body: JSON.stringify({ text }),
       signal,
     });
@@ -147,19 +157,21 @@ export const httpApi: Api = {
     throw new ApiError(0, "The connection closed before the reply finished.");
   },
 
-  listConversations: () => request("/conversations"),
-  getConversation: (id) => request(`/conversations/${encodeURIComponent(id)}`),
-  listApprovals: () => request("/approvals?status=pending"),
+  listConversations: () => request("/conversations", { headers: operatorHeaders() }),
+  getConversation: (id, token) =>
+    request(`/conversations/${encodeURIComponent(id)}`, { headers: token ? conversationHeaders(token) : operatorHeaders() }),
+  listApprovals: () => request("/approvals?status=pending", { headers: operatorHeaders() }),
   decide: (id, decision, operator) =>
     request(`/approvals/${encodeURIComponent(id)}/decision`, {
       method: "POST",
       body: JSON.stringify({ decision, operator }),
+      headers: operatorHeaders(),
     }),
   listAudit(outcome = "", limit = 200) {
     // Only send `outcome` when a filter is chosen: an empty value would match nothing.
     const q = new URLSearchParams({ limit: String(limit) });
     if (outcome) q.set("outcome", outcome);
-    return request(`/audit?${q.toString()}`);
+    return request(`/audit?${q.toString()}`, { headers: operatorHeaders() });
   },
   listRuns: () => request("/eval/runs"),
   getRun: (name) => request(`/eval/runs/${encodeURIComponent(name)}`),

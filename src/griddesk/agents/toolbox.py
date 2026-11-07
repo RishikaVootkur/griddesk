@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import copy
 import json
+from collections import deque
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from typing import Any
@@ -23,6 +24,7 @@ from griddesk.guardrails.action_guard import ActionGuard
 from griddesk.guardrails.injection import filter_result, spotlight
 from griddesk.logging import redact_value
 from griddesk.mcp_servers.common import INTERNAL_KEY
+from griddesk.observability.tracing import set_attrs, span
 from griddesk.policy.rules import Outcome
 
 RUNTIME_ARGS = {"conversation_id"}
@@ -50,18 +52,24 @@ class Toolbox:
     specs: dict[str, ToolSpec] = field(default_factory=dict)
     server_of: dict[str, str] = field(default_factory=dict)
     internal: dict[str, set[str]] = field(default_factory=dict)  # server -> runtime-only tool names
-    calls: list[ToolCallLog] = field(default_factory=list)
-    handoffs: list[dict[str, Any]] = field(default_factory=list)
+    # Call, handoff and guardrail records for the eval. Unbounded by default (one eval run); a
+    # long-running process passes `history` to cap them (0 keeps none).
+    calls: deque[ToolCallLog] = field(default_factory=deque)
+    handoffs: deque[dict[str, Any]] = field(default_factory=deque)
     guard: ActionGuard | None = None
     spotlight: bool = True
     injection_filter: bool = True
-    guardrail_events: list[dict[str, Any]] = field(default_factory=list)
+    guardrail_events: deque[dict[str, Any]] = field(default_factory=deque)
     _stack: AsyncExitStack | None = None
 
     @classmethod
-    async def open(cls, servers: dict[str, MCPServer | str]) -> Toolbox:
+    async def open(cls, servers: dict[str, MCPServer | str], *, history: int | None = None) -> Toolbox:
         """Connect to each server: an in-process `MCPServer` or a Streamable HTTP URL."""
-        tb = cls()
+        tb = cls(
+            calls=deque(maxlen=history),
+            handoffs=deque(maxlen=history),
+            guardrail_events=deque(maxlen=history),
+        )
         tb._stack = AsyncExitStack()
         for name, target in servers.items():
             client = await tb._stack.enter_async_context(Client(target))
@@ -98,18 +106,57 @@ class Toolbox:
         agent: str,
         allowed: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Run a model-requested tool call and return its structured result."""
+        """Run a model-requested tool call (traced as `execute_tool <name>`)."""
+        with span(f"execute_tool {name}", kind="TOOL") as sp:
+            # The log comes back with the result: other conversations append to `calls` concurrently.
+            out, log = await self._call(
+                name, arguments, conversation_id=conversation_id, agent=agent, allowed=allowed
+            )
+            set_attrs(
+                sp,
+                {
+                    "gen_ai.operation.name": "execute_tool",
+                    "gen_ai.tool.name": name,
+                    "gen_ai.conversation.id": conversation_id,
+                    "gen_ai.agent.name": agent,
+                    "tool.parameters": log.arguments,
+                    "griddesk.tool.ok": bool(out.get("ok")),
+                    "griddesk.tool.error_code": (out.get("error") or {}).get("code"),
+                    "griddesk.policy.rule_id": (out.get("error") or {}).get("rule_id"),
+                },
+            )
+            if log.error_code == "guard_blocked":
+                with span("guardrail action_guard", kind="GUARDRAIL") as g:
+                    set_attrs(
+                        g,
+                        {
+                            "griddesk.guardrail.decision": "block",
+                            "griddesk.policy.rule_id": log.rule_id,
+                            "gen_ai.tool.name": name,
+                        },
+                    )
+            return out
+
+    async def _call(
+        self,
+        name: str,
+        arguments: dict[str, Any],
+        *,
+        conversation_id: str,
+        agent: str,
+        allowed: list[str] | None = None,
+    ) -> tuple[dict[str, Any], ToolCallLog]:
+        """Run a model-requested tool call; return its structured result and its call log."""
         args = {k: v for k, v in arguments.items() if k not in RUNTIME_ARGS}
         # Call logs feed run files: identity answers are masked, everything else goes through redaction.
         logged = redact_value({k: ("<redacted>" if k in SENSITIVE_ARGS else v) for k, v in args.items()})
         if name not in self.specs or (allowed is not None and name not in allowed):
-            self.calls.append(
-                ToolCallLog(conversation_id, agent, name, logged, False, False, False, "unknown_tool")
-            )
+            log = ToolCallLog(conversation_id, agent, name, logged, False, False, False, "unknown_tool")
+            self.calls.append(log)
             return {
                 "ok": False,
                 "error": {"code": "invalid_request", "message": f"No tool named {name} here."},
-            }
+            }, log
         if self.guard is not None:
             decision = self.guard.check(name, args, conversation_id)
             if decision.outcome is Outcome.NEEDS_APPROVAL:
@@ -127,19 +174,18 @@ class Toolbox:
                             "approval_request_id": apr,
                         }
                     )
-                    self.calls.append(
-                        ToolCallLog(
-                            conversation_id,
-                            agent,
-                            name,
-                            logged,
-                            True,
-                            True,
-                            False,
-                            "needs_approval",
-                            decision.rule_id,
-                        )
+                    log = ToolCallLog(
+                        conversation_id,
+                        agent,
+                        name,
+                        logged,
+                        True,
+                        True,
+                        False,
+                        "needs_approval",
+                        decision.rule_id,
                     )
+                    self.calls.append(log)
                     return {
                         "ok": False,
                         "error": {
@@ -148,7 +194,7 @@ class Toolbox:
                             "message": f"{decision.message} Sent to a supervisor for approval.",
                         },
                         "approval_request_id": apr,
-                    }
+                    }, log
             elif not decision.allowed:
                 self.guard.record_block(name, decision, conversation_id, args.get("account_id"))
                 self.guardrail_events.append(
@@ -159,19 +205,18 @@ class Toolbox:
                         "rule_id": decision.rule_id,
                     }
                 )
-                self.calls.append(
-                    ToolCallLog(
-                        conversation_id,
-                        agent,
-                        name,
-                        logged,
-                        True,
-                        True,
-                        False,
-                        "guard_blocked",
-                        decision.rule_id,
-                    )
+                log = ToolCallLog(
+                    conversation_id,
+                    agent,
+                    name,
+                    logged,
+                    True,
+                    True,
+                    False,
+                    "guard_blocked",
+                    decision.rule_id,
                 )
+                self.calls.append(log)
                 return {
                     "ok": False,
                     "error": {
@@ -179,7 +224,7 @@ class Toolbox:
                         "rule_id": decision.rule_id,
                         "message": f"{decision.message} (blocked before execution)",
                     },
-                }
+                }, log
         client = self.clients[self.server_of[name]]
         props = self.specs[name].parameters.get("properties", {})
         # Every model-facing GridDesk tool takes conversation_id; the runtime value always wins.
@@ -187,36 +232,43 @@ class Toolbox:
         result = await client.call_tool(name, payload)
         if result.is_error or result.structured_content is None:
             text = " ".join(getattr(c, "text", "") for c in result.content)[:400]
-            self.calls.append(
-                ToolCallLog(conversation_id, agent, name, logged, True, False, False, "invalid_request")
-            )
+            log = ToolCallLog(conversation_id, agent, name, logged, True, False, False, "invalid_request")
+            self.calls.append(log)
             return {
                 "ok": False,
                 "error": {"code": "invalid_request", "message": text or "Invalid arguments."},
-            }
+            }, log
         out: dict[str, Any] = result.structured_content
         err = out.get("error") or {}
         unknown_args = set(args) - set(props)
-        self.calls.append(
-            ToolCallLog(
-                conversation_id,
-                agent,
-                name,
-                logged,
-                True,
-                not unknown_args,
-                bool(out.get("ok")),
-                err.get("code"),
-                err.get("rule_id"),
-            )
+        log = ToolCallLog(
+            conversation_id,
+            agent,
+            name,
+            logged,
+            True,
+            not unknown_args,
+            bool(out.get("ok")),
+            err.get("code"),
+            err.get("rule_id"),
         )
-        return out
+        self.calls.append(log)
+        return out, log
 
     def render(self, name: str, result: dict[str, Any], conversation_id: str) -> str:
         """Turn a tool result into the text the model sees, applying the injection defenses."""
         if self.injection_filter:
             result, hits = filter_result(name, result)
             if hits:
+                with span("guardrail injection_filter", kind="GUARDRAIL") as g:
+                    set_attrs(
+                        g,
+                        {
+                            "griddesk.guardrail.decision": "mask",
+                            "gen_ai.tool.name": name,
+                            "griddesk.guardrail.patterns": ",".join(sorted(set(hits))),
+                        },
+                    )
                 self.guardrail_events.append(
                     {
                         "conversation_id": conversation_id,

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { setOperatorToken } from "../lib/operatorToken";
 import { ApiError, httpApi } from "./client";
 import type { StreamEvent } from "./types";
 
@@ -31,8 +32,11 @@ async function collect(gen: AsyncGenerator<StreamEvent>): Promise<StreamEvent[]>
   return out;
 }
 
+const conv = (id: string) => ({ conversation_id: id, token: "tok-1" });
+
 afterEach(() => {
   vi.unstubAllGlobals();
+  setOperatorToken("");
 });
 
 describe("httpApi.sendMessage", () => {
@@ -45,7 +49,7 @@ describe("httpApi.sendMessage", () => {
     ]);
     const fetchMock = stubFetch(res);
 
-    const events = await collect(httpApi.sendMessage("conv 1", "I was overcharged"));
+    const events = await collect(httpApi.sendMessage(conv("conv 1"), "I was overcharged"));
 
     expect(events).toEqual([
       { type: "agent", text: "Connecting you", agent: "triage" },
@@ -57,6 +61,7 @@ describe("httpApi.sendMessage", () => {
     expect(url).toBe("/api/conversations/conv%201/messages");
     expect(init?.method).toBe("POST");
     expect(JSON.parse(String(init?.body))).toEqual({ text: "I was overcharged" });
+    expect((init?.headers as Record<string, string>)["X-Conversation-Token"]).toBe("tok-1");
     // Stopping at `done` releases the connection.
     expect(state.cancelled).toBe(true);
   });
@@ -71,7 +76,7 @@ describe("httpApi.sendMessage", () => {
       ]).res,
     );
 
-    const events = await collect(httpApi.sendMessage("c", "hi"));
+    const events = await collect(httpApi.sendMessage(conv("c"), "hi"));
 
     expect(events).toEqual([
       { type: "error", message: "Model unavailable" },
@@ -86,7 +91,7 @@ describe("httpApi.sendMessage", () => {
     const seen: StreamEvent[] = [];
     let error: unknown;
     try {
-      for await (const ev of httpApi.sendMessage("c", "hi")) seen.push(ev);
+      for await (const ev of httpApi.sendMessage(conv("c"), "hi")) seen.push(ev);
     } catch (e) {
       error = e;
     }
@@ -99,7 +104,7 @@ describe("httpApi.sendMessage", () => {
   it("throws an ApiError with the FastAPI detail on a non-OK response", async () => {
     stubFetch(new Response(JSON.stringify({ detail: "Conversation not found" }), { status: 404 }));
 
-    await expect(collect(httpApi.sendMessage("missing", "hi"))).rejects.toMatchObject({
+    await expect(collect(httpApi.sendMessage(conv("missing"), "hi"))).rejects.toMatchObject({
       name: "ApiError",
       status: 404,
       message: "Conversation not found",
@@ -121,9 +126,52 @@ describe("httpApi requests", () => {
   });
 
   it("passes the abort signal to conversation creation", async () => {
-    const fetchMock = stubFetch(new Response(JSON.stringify({ conversation_id: "conv_1" })));
+    const fetchMock = stubFetch(new Response(JSON.stringify({ conversation_id: "conv_1", token: "t" })));
     const controller = new AbortController();
-    await expect(httpApi.createConversation(controller.signal)).resolves.toBe("conv_1");
+    await expect(httpApi.createConversation(controller.signal)).resolves.toEqual({ conversation_id: "conv_1", token: "t" });
     expect(fetchMock.mock.calls[0]![1]?.signal).toBe(controller.signal);
+  });
+
+  it("reads a transcript with the conversation token, or as the operator without one", async () => {
+    setOperatorToken("op-secret");
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ conversation_id: "c", messages: [], awaiting_approval: null })));
+    vi.stubGlobal("fetch", fetchMock);
+    await httpApi.getConversation("c", "tok-1");
+    await httpApi.getConversation("c");
+    const [first, second] = fetchMock.mock.calls.map((c) => c[1]?.headers as Record<string, string>);
+    expect(first).toMatchObject({ "X-Conversation-Token": "tok-1" });
+    expect(first).not.toHaveProperty("Authorization");
+    expect(second).toMatchObject({ Authorization: "Bearer op-secret" });
+  });
+
+  it("sends the operator token on operator endpoints", async () => {
+    setOperatorToken("op-secret");
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response("[]"));
+    vi.stubGlobal("fetch", fetchMock);
+    await httpApi.listConversations();
+    await httpApi.listApprovals();
+    await httpApi.listAudit();
+    for (const call of fetchMock.mock.calls) {
+      expect(call[1]?.headers).toMatchObject({ Authorization: "Bearer op-secret" });
+    }
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ status: "executed", reply: "ok" })));
+    await httpApi.decide("apr 1", "approve", "Dana");
+    const last = fetchMock.mock.calls.at(-1)!;
+    expect(last[0]).toBe("/api/approvals/apr%201/decision");
+    expect(last[1]?.headers).toMatchObject({ Authorization: "Bearer op-secret", "Content-Type": "application/json" });
+  });
+
+  it("sends no Authorization header when no operator token is set", async () => {
+    const fetchMock = stubFetch(new Response("[]"));
+    await httpApi.listApprovals();
+    expect(fetchMock.mock.calls[0]![1]?.headers).not.toHaveProperty("Authorization");
+  });
+});
+
+describe("agent events", () => {
+  it("keeps a null agent as null", async () => {
+    stubFetch(sseResponse(['event: agent\ndata: {"text":"Still with a supervisor","agent":null}\n\n', "event: done\ndata: {}\n\n"]).res);
+    const events = await collect(httpApi.sendMessage(conv("c"), "news?"));
+    expect(events[0]).toEqual({ type: "agent", text: "Still with a supervisor", agent: null });
   });
 });

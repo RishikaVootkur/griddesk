@@ -1,0 +1,7 @@
+node_modules
+dist
+dist-static
+.env
+.env.*
+*.log
+coverage

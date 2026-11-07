@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, describeError } from "../../api/client";
-import type { ChatMessage, PendingApproval } from "../../api/types";
+import type { ChatMessage, NewConversation, PendingApproval } from "../../api/types";
 import { MessageBubble } from "../../components/Transcript";
 import { AgentBadge, Button } from "../../components/ui";
 import { ApprovalBanner } from "./ApprovalBanner";
@@ -13,7 +13,9 @@ const SUGGESTIONS = [
 ];
 
 export function ChatView() {
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  // The conversation id and its secret: only this tab can post to or read the conversation.
+  const [conversation, setConversation] = useState<NewConversation | null>(null);
+  const conversationId = conversation?.conversation_id ?? null;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pending, setPending] = useState<PendingApproval | null>(null);
   const [streaming, setStreaming] = useState(false);
@@ -31,10 +33,10 @@ export function ChatView() {
 
   // While a supervisor decides, poll the conversation so the outcome shows up without a refresh.
   useEffect(() => {
-    if (!pending || !conversationId || streaming) return;
+    if (!pending || !conversation || streaming) return;
     const id = setInterval(async () => {
       try {
-        const detail = await api.getConversation(conversationId);
+        const detail = await api.getConversation(conversation.conversation_id, conversation.token);
         if (!detail.awaiting_approval) {
           setMessages(detail.messages);
           setPending(null);
@@ -44,7 +46,7 @@ export function ChatView() {
       }
     }, 4000);
     return () => clearInterval(id);
-  }, [pending, conversationId, streaming]);
+  }, [pending, conversation, streaming]);
 
   async function send(text: string) {
     setError(null);
@@ -53,14 +55,14 @@ export function ChatView() {
     const controller = new AbortController();
     abortRef.current = controller;
     try {
-      let id = conversationId;
-      if (!id) {
-        id = await api.createConversation(controller.signal);
+      let conv = conversation;
+      if (!conv) {
+        conv = await api.createConversation(controller.signal);
         // "New conversation" may have been clicked while this was in flight.
         if (controller.signal.aborted) return;
-        setConversationId(id);
+        setConversation(conv);
       }
-      for await (const ev of api.sendMessage(id, text, controller.signal)) {
+      for await (const ev of api.sendMessage(conv, text, controller.signal)) {
         if (ev.type === "agent") setMessages((m) => [...m, { role: "agent", text: ev.text, agent: ev.agent }]);
         else if (ev.type === "approval") setPending({ approval_request_id: ev.approval_request_id, action: ev.action });
         else if (ev.type === "error") setError(ev.message);
@@ -77,7 +79,7 @@ export function ChatView() {
     abortRef.current?.abort();
     abortRef.current = null;
     setStreaming(false);
-    setConversationId(null);
+    setConversation(null);
     setMessages([]);
     setPending(null);
     setError(null);

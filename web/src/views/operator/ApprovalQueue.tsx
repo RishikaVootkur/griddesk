@@ -39,7 +39,13 @@ export function ApprovalQueue({ state, onDecided }: Props) {
     setResult(null);
     try {
       const r = await api.decide(req.approval_request_id, decision, operator.trim() || "supervisor");
-      setResult({ tone: "good", text: `${decision === "approve" ? "Approved" : "Denied"} ${req.action} for account ${req.account_id}. Reply sent: "${r.reply}"` });
+      const verb = decision === "approve" ? "Approved" : "Denied";
+      // "approved" (not "executed") means the decision is stored but the action has not run yet.
+      const text =
+        r.status === "approved"
+          ? `${verb} ${req.action} for account ${req.account_id}. The action has not run yet; it is retried when the conversation is next opened.`
+          : `${verb} ${req.action} for account ${req.account_id}. Reply sent: "${r.reply}"`;
+      setResult({ tone: "good", text });
       onDecided();
     } catch (e) {
       setResult({ tone: "bad", text: describeError(e) });

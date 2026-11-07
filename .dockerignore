@@ -1,0 +1,11 @@
+.env
+.env.*
+.venv
+.git
+.griddesk
+.claude
+**/__pycache__
+**/node_modules
+web/dist
+web/dist-static
+evals/cache
