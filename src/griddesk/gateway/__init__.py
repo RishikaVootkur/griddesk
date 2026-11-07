@@ -57,5 +57,6 @@ def build_gateway(
         cache=DiskCache(cache_dir or s.cache_dir),
         cache_mode=cache_mode or s.cache_mode,
         max_retries=s.max_retries,
+        quota_wait_cap=s.quota_wait_seconds,
         conversation_budget=s.conversation_token_budget,
     )

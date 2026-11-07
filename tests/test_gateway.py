@@ -1,4 +1,5 @@
 import asyncio
+import json
 import random
 
 import pytest
@@ -405,3 +406,75 @@ def test_cache_miss_names_every_model_tried(tmp_path):
     with pytest.raises(CacheMiss) as e:
         run(gw.complete(req(), fallbacks=["groq:qwen/qwen3.8-27b"]))
     assert "gemini:gemini-3.8-flash" in str(e.value) and "groq:qwen/qwen3.8-27b" in str(e.value)
+
+
+def _quota_error(wait):
+    return ProviderError("HTTP 429: tokens per day (TPD)", status=429, retryable=False, quota_wait=wait)
+
+
+def test_rolling_daily_quota_is_waited_out_when_allowed():
+    p = FakeProvider("groq", [_quota_error(268.7), _quota_error(30.0), resp(content="later")])
+    gw, clock = make([p], quota_wait_cap=900)
+    r = run(gw.complete(req("groq:openai/gpt-oss-120b")))
+    assert r.content == "later" and r.attempts == 1  # waiting is not a failed attempt
+    assert len(clock.sleeps) == 2 and 270.7 <= clock.sleeps[0] <= 300.7 and 32.0 <= clock.sleeps[1] <= 62.0
+
+
+def test_rolling_daily_quota_fails_fast_by_default_or_past_the_budget():
+    for kw in ({}, {"quota_wait_cap": 60}):
+        gw, clock = make([FakeProvider("groq", [_quota_error(268.7)])], **kw)
+        with pytest.raises(ProviderError):
+            run(gw.complete(req("groq:openai/gpt-oss-120b")))
+        assert clock.sleeps == []
+
+
+def test_total_quota_wait_is_bounded():
+    gw, clock = make([FakeProvider("groq", [_quota_error(100.0)] * 50)], quota_wait_cap=500)
+    with pytest.raises(ProviderError):
+        run(gw.complete(req("groq:openai/gpt-oss-120b")))
+    assert sum(clock.sleeps) <= 500 and len(clock.sleeps) >= 3
+    gw, clock = make(
+        [FakeProvider("groq", [_quota_error(1.0)] * 50)], quota_wait_cap=10_000, max_quota_waits=4
+    )
+    with pytest.raises(ProviderError):
+        run(gw.complete(req("groq:openai/gpt-oss-120b")))
+    assert len(clock.sleeps) == 4
+
+
+def test_quota_waits_do_not_hide_real_retries():
+    p = FakeProvider(
+        "groq",
+        [_quota_error(10.0), ProviderError("HTTP 503", status=503, retryable=True), resp(content="ok")],
+    )
+    gw, _ = make([p], quota_wait_cap=900)
+    assert run(gw.complete(req("groq:openai/gpt-oss-120b"))).attempts == 2
+
+
+def test_groq_try_again_message_is_parsed():
+    from griddesk.gateway.providers import _parse_try_again
+
+    assert _parse_try_again("Please try again in 4m28.704s. Need more") == pytest.approx(268.704)
+    assert _parse_try_again("try again in 1h2m3s") == 3723
+    assert _parse_try_again("try again in 12.5s") == 12.5
+    assert _parse_try_again("Please try again in 860ms.") == pytest.approx(0.86)
+    assert _parse_try_again("try again in 2m") == 120
+    assert _parse_try_again("no hint here") is None
+
+
+def test_groq_tpd_429_carries_the_wait_and_gemini_daily_does_not():
+    from griddesk.gateway.providers import GroqProvider
+
+    body = (
+        '{"error":{"message":"Rate limit reached for model `openai/gpt-oss-120b` on tokens per day (TPD): '
+        'Limit 200000, Used 199775, Requested 847. Please try again in 4m28.704s."}}'
+    )
+    groq = GroqProvider("k", _FakeHTTP(429, body))  # type: ignore[arg-type]
+    with pytest.raises(ProviderError) as e:
+        run(groq.complete(req("groq:openai/gpt-oss-120b")))
+    assert not e.value.retryable and e.value.quota_wait == pytest.approx(268.704)
+    quota = "GenerateRequestsPerDayPerProjectPerModel-FreeTier"
+    violation = {"violations": [{"quotaId": quota}]}
+    gem = json.dumps({"error": {"code": 429, "details": [violation, {"retryDelay": "30s"}]}})
+    with pytest.raises(ProviderError) as e:
+        run(_gemini(gem, status=429).complete(req("gemini:gemini-3.8-flash")))
+    assert e.value.quota_wait is None

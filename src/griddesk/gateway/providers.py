@@ -45,6 +45,20 @@ def _parse_retry_after(value: str | None) -> float | None:
     return {"ms": n / 1000, "m": n * 60}.get(m.group(2) or "s", n)
 
 
+_TRY_AGAIN = re.compile(
+    r"try again in (?:([\d.]+)ms|(?:(\d+)h)?(?:(\d+)m(?!s))?(?:([\d.]+)s)?)", re.IGNORECASE
+)
+
+
+def _parse_try_again(text: str) -> float | None:
+    """Groq's quota message: "Please try again in 4m28.704s" (also "1h2m3s", "12.5s", "860ms")."""
+    m = _TRY_AGAIN.search(text)
+    if not m or not any(m.groups()):
+        return None
+    ms, h, mi, s = (float(g) if g else 0.0 for g in m.groups())
+    return ms / 1000 + h * 3600 + mi * 60 + s
+
+
 def _tool_result_payload(content: str) -> Any:
     try:
         return json.loads(content)
@@ -73,6 +87,7 @@ async def _post(client: httpx.AsyncClient, url: str, body: dict[str, Any], heade
             retry_after=retry_after,
             # A malformed tool call usually repeats at temperature 0: one more try, then fall back.
             retry_limit=1 if tool_use_failed else None,
+            quota_wait=_parse_try_again(r.text) if daily_quota else None,
         )
     try:
         return r.json()

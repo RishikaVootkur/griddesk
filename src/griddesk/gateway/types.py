@@ -88,12 +88,16 @@ class ProviderError(Exception):
         retryable: bool = False,
         retry_after: float | None = None,
         retry_limit: int | None = None,
+        quota_wait: float | None = None,
     ) -> None:
         super().__init__(message)
         self.status = status
         self.retryable = retryable
         self.retry_after = retry_after
         self.retry_limit = retry_limit  # cap below the gateway's max_retries for this error
+        # Seconds until a spent rolling quota (Groq tokens per day) frees enough room, when the
+        # provider says so. The gateway may wait this out instead of failing.
+        self.quota_wait = quota_wait
 
 
 class BudgetExceeded(Exception):
