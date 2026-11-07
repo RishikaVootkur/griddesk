@@ -420,6 +420,7 @@ async def run_suite(
         "environment": {
             "python": platform.python_version(),
             "simulated_now": str(get_settings().simulated_now),
+            "git_sha": _git_sha(),
         },
         "wall_time_s": round(time.time() - started, 1),
         "summary": summary,

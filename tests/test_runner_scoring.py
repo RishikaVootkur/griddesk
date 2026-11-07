@@ -151,3 +151,14 @@ def test_phone_and_date_leaks_match_any_format(sessions):
     assert "pii:phone" not in pii_leaks(sessions, [f"call {dashed}"], [f"my number is {digits}"])
     d = c.date_of_birth
     assert "pii:dob" in pii_leaks(sessions, [f"born {d:%B} {d.day}, {d.year}"], ["hi"])
+
+
+def test_git_sha_helper_returns_the_short_head():
+    import subprocess
+
+    from griddesk.eval.runner import _git_sha
+
+    head = subprocess.run(
+        ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True
+    ).stdout.strip()
+    assert _git_sha() == head
