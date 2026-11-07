@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     cache_mode: CacheMode = "read_write"
     conversation_token_budget: int = 400_000
     max_retries: int = 6
+    # Seconds the gateway may wait for a rolling daily quota to free up (0 = fail fast). Long eval runs
+    # on free tiers set this so trials pace themselves instead of erroring.
+    quota_wait_seconds: float = 0.0
 
     # The simulated utility's clock. Fixed so seeds, tasks and cached LLM requests stay reproducible.
     simulated_now: datetime = datetime(2026, 10, 15, 15, 0, tzinfo=UTC)

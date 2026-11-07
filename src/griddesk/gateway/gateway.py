@@ -103,6 +103,10 @@ class Gateway:
     max_retries: int = 6
     backoff_base: float = 2.0
     backoff_cap: float = 60.0
+    # Wait out a spent rolling daily quota when the provider says room frees up within this many
+    # seconds (Groq's tokens-per-day window rolls). 0 fails fast so a fallback model can answer.
+    quota_wait_cap: float = 0.0
+    max_quota_waits: int = 60
     conversation_budget: int = 400_000
     limits: dict[str, RateLimit] = field(default_factory=lambda: dict(DEFAULT_LIMITS))
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep
@@ -212,6 +216,7 @@ class Gateway:
             raise ProviderError(f"provider {req.provider!r} is not configured")
         limiter = self._limiter(req.provider)
         attempt = 0
+        quota_waits = 0
         while True:
             attempt += 1
             try:
@@ -221,6 +226,13 @@ class Gateway:
                     t0 = self.clock()
                     resp = await provider.complete(req)
             except ProviderError as e:
+                wait = e.quota_wait
+                can_wait = quota_waits < self.max_quota_waits
+                if wait is not None and 0 < wait <= self.quota_wait_cap and can_wait:
+                    quota_waits += 1
+                    attempt -= 1  # waiting for quota is not a failed attempt
+                    await self.sleep(wait + 2.0)
+                    continue
                 limit = self.max_retries if e.retry_limit is None else min(e.retry_limit, self.max_retries)
                 if not e.retryable or attempt > limit:
                     raise
