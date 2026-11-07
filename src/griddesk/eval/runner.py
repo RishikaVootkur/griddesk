@@ -433,6 +433,22 @@ async def run_suite(
     }
 
 
+def _git_sha() -> str:
+    import subprocess
+
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],  # noqa: S607 (git from PATH is intended)
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        return out.stdout.strip()
+    except OSError:
+        return ""
+
+
 def _breakdown(records: Sequence[TrialRecord], tasks: dict[str, Task], attr: str) -> dict[str, float]:
     groups: dict[str, list[bool]] = {}
     for r in records:

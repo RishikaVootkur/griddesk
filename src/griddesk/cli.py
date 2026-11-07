@@ -95,6 +95,8 @@ def execute_suite(
     cache_dir: Path,
     cache_mode: str,
     label: str,
+    defenses: Any = None,
+    sim_fallbacks: list[str] | None = None,
 ) -> dict[str, Any]:
     """Load tasks, run them, return the run dict (shared by `eval run` and `eval gate`)."""
     import asyncio
@@ -126,6 +128,10 @@ def execute_suite(
         suite=suite,
         label=label,
     )
+    if defenses is not None:
+        cfg.defenses = defenses
+    if sim_fallbacks is not None:
+        cfg.sim_fallbacks = sim_fallbacks
     gw = build_gateway(cache_dir=cache_dir, cache_mode=cast(CacheMode, cache_mode))
     global _last_gateway
     _last_gateway = gw
@@ -144,6 +150,20 @@ def execute_suite(
             await gw.aclose()
 
     return asyncio.run(go())
+
+
+def parse_defenses(spec: str) -> Any:
+    from griddesk.guardrails import Defenses
+
+    if spec == "all":
+        return Defenses()
+    if spec == "none":
+        return Defenses.none()
+    on = set(spec.split("+"))
+    unknown = on - set(Defenses.__dataclass_fields__)
+    if unknown:
+        raise typer.BadParameter(f"unknown defenses: {sorted(unknown)}")
+    return Defenses(**{f: f in on for f in Defenses.__dataclass_fields__})
 
 
 def print_summary(run: dict[str, Any]) -> None:
@@ -166,6 +186,13 @@ def eval_run(
     enforce: bool = typer.Option(True, "--enforce/--no-enforce", help="In-tool policy enforcement."),
     sim_model: str = typer.Option("groq:openai/gpt-oss-120b", help="User simulator model."),
     tasks: str = typer.Option("", help="Comma-separated task ids to run (default: all)."),
+    task_file: Path | None = typer.Option(
+        None, help="File of task ids, one per line (e.g. evals/subsets/core-30.txt)."
+    ),
+    defenses: str = typer.Option(
+        "all", help="all, none, or a + list of in_tool_policy, action_guard, spotlight, injection_filter."
+    ),
+    sim_fallbacks: str = typer.Option("groq:openai/gpt-oss-20b", help="Comma-separated simulator fallbacks."),
     limit: int = typer.Option(0, help="Run only the first N tasks."),
     concurrency: int = typer.Option(2, min=1),
     replay: bool = typer.Option(False, help="Serve only from the response cache; fail on a miss."),
@@ -179,6 +206,13 @@ def eval_run(
 
     slug = model.split(":", 1)[1].replace("/", "-")
     name = label or f"{Path(suite).stem}-{slug}-{design}-{'enf' if enforce else 'noenf'}-k{trials}"
+    ids = [t for t in tasks.split(",") if t]
+    if task_file:
+        ids += [
+            ln.strip() for ln in task_file.read_text().splitlines() if ln.strip() and not ln.startswith("#")
+        ]
+        if not ids:
+            raise typer.BadParameter(f"{task_file} lists no task ids")
     run = execute_suite(
         model=model,
         suite=suite,
@@ -186,12 +220,14 @@ def eval_run(
         design=design,
         enforce=enforce,
         sim_model=sim_model,
-        task_ids=[t for t in tasks.split(",") if t],
+        task_ids=ids,
         limit=limit,
         concurrency=concurrency,
         cache_dir=cache_dir,
         cache_mode="replay_only" if replay else "read_write",
         label=name,
+        defenses=parse_defenses(defenses),
+        sim_fallbacks=[x for x in sim_fallbacks.split(",") if x],
     )
     path = write_run(run, out or REPO_ROOT / "evals" / "runs" / f"{name}.json")
     print_summary(run)
@@ -272,6 +308,89 @@ def eval_build_tasks(
             path = out if out is not None else REPO_ROOT / rel
             write(tasks, path)
             typer.echo(f"wrote {len(tasks)} tasks to {path}")
+
+
+def _all_tasks() -> dict[str, Any]:
+    from griddesk.config import REPO_ROOT
+    from griddesk.eval.tasks import load_tasks
+
+    out = {t.id: t for t in load_tasks(REPO_ROOT / "evals" / "tasks")}
+    out.update({t.id: t for t in load_tasks(REPO_ROOT / "evals" / "adversarial")})
+    return out
+
+
+@eval_app.command("analyze")
+def eval_analyze(
+    run_file: Path,
+    verdicts: Path | None = typer.Option(None, help="Simulator-validation JSON (marks simulator errors)."),
+    out: Path | None = typer.Option(None, help="Write the analysis JSON here."),
+) -> None:
+    """Sort failed trials into the error taxonomy and print counts with examples."""
+    import json
+
+    from griddesk.eval.analysis import analyze
+    from griddesk.eval.report import load_run
+
+    v = json.loads(verdicts.read_text())["verdicts"] if verdicts else None
+    result = analyze(load_run(run_file), _all_tasks(), v)
+    typer.echo(f"{result['failed']} failed of {result['trials']} trials")
+    for k, n in result["counts"].items():
+        typer.echo(f"  {k:22s} {n}")
+    if out:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(result, indent=1, default=str))
+        typer.echo(f"wrote {out}")
+
+
+@eval_app.command("validate-sim")
+def eval_validate_sim(
+    run_files: list[Path],
+    judge: str = typer.Option("gemini:gemini-3.5-flash-lite", help="Judge model (a third family)."),
+    n: int = typer.Option(30),
+    out: Path = typer.Option(Path("evals/analysis/simulator-validation.json")),
+) -> None:
+    """Have a judge model check sampled transcripts against their hidden goals."""
+    import asyncio
+    import json
+
+    from griddesk.eval.analysis import validate_simulator
+    from griddesk.eval.report import load_run
+    from griddesk.gateway import build_gateway
+
+    gw = build_gateway()
+
+    async def go() -> dict[str, Any]:
+        try:
+            return await validate_simulator([load_run(p) for p in run_files], _all_tasks(), gw, judge, n=n)
+        finally:
+            await gw.aclose()
+
+    result = asyncio.run(go())
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result, indent=1))
+    typer.echo(
+        f"judged {result['judged']}/{result['sampled']}: simulator broke the task in "
+        f"{result['broke_task_rate']:.1%}; followed goal {result['followed_goal_rate']:.1%}"
+    )
+    typer.echo(f"wrote {out}")
+
+
+@eval_app.command("export-dashboard")
+def eval_export_dashboard(out: Path = typer.Option(Path("web/dist-static/eval-data.json"))) -> None:
+    """Write the static dashboard's eval-data.json from the committed run files."""
+    import json
+
+    from griddesk.api.app import RUNS_DIR, run_summary
+
+    runs, details = [], {}
+    for p in sorted(RUNS_DIR.glob("*.json")):
+        data = json.loads(p.read_text())
+        runs.append(run_summary(p, data))
+        details[p.stem] = data
+    runs.sort(key=lambda r: r["created_at"], reverse=True)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps({"runs": runs, "details": details}, default=str))
+    typer.echo(f"wrote {len(runs)} runs to {out}")
 
 
 @eval_app.command("compare")

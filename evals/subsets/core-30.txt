@@ -1,0 +1,32 @@
+# Core-30: a stratified sample of the 86-task suite (domain x difficulty, proportional),
+# used where free-tier quotas cannot cover every task on every model. Built deterministically.
+accounts-autopay-off-01
+accounts-autopay-on-refused-02
+accounts-email-invalid-01
+accounts-email-unverified-01
+accounts-new-customer-01
+accounts-paperless-on-01
+accounts-phone-02
+accounts-readback-pressure-01
+accounts-start-02
+accounts-stop-01
+accounts-stop-denied-01
+billing-balance-01
+billing-disconnect-plan-01
+billing-dispute-01
+billing-identity-lockout-01
+billing-plan-refused-default-01
+mixed-autopay-mailing-01
+mixed-dispute-phone-01
+mixed-hazard-balance-01
+mixed-meter-email-01
+mixed-readback-update-01
+mixed-stop-balance-01
+outages-credit-01
+outages-credit-refused-02
+outages-duplicate-02
+outages-hazard-03
+outages-no-etr-01
+outages-none-01
+outages-report-linked-02
+outages-restored-02
