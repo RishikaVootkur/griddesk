@@ -1,6 +1,6 @@
 # GridDesk
 
-**A customer-operations AI agent for a simulated electric utility, with the evaluation to prove it works.** Customers chat about bills, outages, payment plans, moving service and account changes. A triage agent hands each request to billing, outage or account specialists, which act through four MCP servers on a real Postgres database. They follow a 32-rule policy handbook that is enforced in code as well as in the prompt, pause for human approval on risky actions, redact personal data from every log and trace, and resist prompt injection. GridDesk is evaluated the way tau-bench evaluates agents: an LLM plays a customer with a hidden goal, and a trial passes only if the final database state matches the expected one. The suite has 86 tasks and 44 attacks, run on three models from three providers, with pass^k reliability, bootstrap confidence intervals and a CI regression gate that replays recorded runs without API keys.
+**A customer-operations AI agent for a simulated electric utility, with the evaluation to prove it works.** Customers chat about bills, outages, payment plans, moving service and account changes. A triage agent hands each request to billing, outage or account specialists, which act through four MCP servers on a real Postgres database. They follow a 32-rule policy handbook that is enforced in code as well as in the prompt, pause for human approval on risky actions, redact personal data from every log and trace, and resist prompt injection. GridDesk is evaluated the way tau-bench evaluates agents: an LLM plays a customer with a hidden goal, and a trial passes only if the final database state matches the expected one. The suite has 86 tasks and 47 attacks, run on three models from three providers, with pass^k reliability, bootstrap confidence intervals and a CI regression gate that replays recorded runs without API keys.
 
 Everything runs on free tiers: Gemini, Groq and a local Ollama model.
 
@@ -89,4 +89,11 @@ Open http://localhost:5173 for the chat, operator console and dashboard, and htt
 | `src/griddesk/api/` and `web/` | FastAPI backend and React app |
 | `docs/` | [decisions](docs/decisions.md), [methodology](docs/eval-methodology.md), [policy handbook](docs/policy-handbook.md), [threat model](docs/threat-model.md), [API contract](docs/api-contract.md) |
 
-<!-- RESULTS:LEARNED -->
+## What I learned
+
+- **The simulator is half the eval.** The first runs scored correct agents as failing because the simulated customer said goodbye in the same message as its request, or wrote the agent's reply for it. A prompt rule did not fix the first problem; enforcing the stop in code did (D12). A judge from a different model family now audits a sample of simulator transcripts, and its verdicts feed the error taxonomy, so simulator faults are counted apart from agent faults.
+- **Read failures before tuning prompts.** Sorting every failed trial into a fixed taxonomy pointed at two concrete bugs that aggregate scores hid: the front desk promising a transfer it never made, and an outage rule the models read the wrong way. One was fixed in code and one in the prompt, each measured on the same tasks before and after (D14, D15).
+- **Put the policy in the tools, then measure what the prompt alone does.** With in-tool enforcement switched off, the same prompts let attacks through that the tools otherwise refuse. The prompt is a first line, and the tool is the guarantee.
+- **Free tiers shape the design.** Daily quotas, not speed, were the bottleneck: the 20-request daily cap on the newest Gemini Flash moved the agent to Flash-Lite, daily 429s are failed fast and never retried, and every response is cached by its full request so reruns, CI replays and the regression gate cost nothing.
+- **Reproducible means pinned everywhere.** Byte-for-byte replay needed a fixed clock, deterministic ids, rolled-back trial transactions, and a cache key that does not depend on which API keys happen to be present.
+
