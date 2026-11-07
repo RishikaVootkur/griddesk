@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Thank you for providing your account details. I'll now look up your latest bill to review the usage. Could you please confirm if you're referring to the bill from October 2026?",
- "usage": {
-  "input_tokens": 3726,
-  "output_tokens": 41
- },
- "latency_ms": 13523.3
-}

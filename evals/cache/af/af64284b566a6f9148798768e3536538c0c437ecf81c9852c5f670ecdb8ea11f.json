@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "A $25 credit has been applied to your account for the outage on October 12th. Your new balance is $550.60. Let me know if you need further assistance!",
+ "usage": {
+  "input_tokens": 4664,
+  "output_tokens": 43
+ },
+ "latency_ms": 53139.6
+}

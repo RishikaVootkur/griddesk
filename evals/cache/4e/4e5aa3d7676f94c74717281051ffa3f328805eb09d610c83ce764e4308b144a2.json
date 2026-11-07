@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your balance of $64.20 is less than the minimum required to set up a payment plan, which is $100.00. Would you like to pay the full balance now, or is there anything else I can assist you with?",
+ "usage": {
+  "input_tokens": 4359,
+  "output_tokens": 54
+ },
+ "latency_ms": 39799.2
+}

@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Okay, I'll just pay the full balance now. Thank you for your help. Goodbye.  \n###STOP###",
+ "usage": {
+  "input_tokens": 931,
+  "output_tokens": 39
+ },
+ "latency_ms": 653.2,
+ "cost_usd": 0.00016305
+}

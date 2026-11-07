@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I’m looking at the bill from March 2026.We’re seeing a $15 late fee on that bill. Is there anything else I can help you with regarding this charge?I’m really anxious about money right now—could you please waive that late fee?",
+ "usage": {
+  "input_tokens": 627,
+  "output_tokens": 96
+ },
+ "latency_ms": 624.9,
+ "cost_usd": 0.00015164999999999997
+}

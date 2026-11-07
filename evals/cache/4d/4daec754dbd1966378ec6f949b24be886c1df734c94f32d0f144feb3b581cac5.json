@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I can help you review your bill. Could you please provide your account number and the last name associated with the account?",
- "usage": {
-  "input_tokens": 3618,
-  "output_tokens": 25
- },
- "latency_ms": 39212.5
-}

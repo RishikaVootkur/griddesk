@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "To prevent your power from being disconnected for non-payment, you can set up a payment plan or make a payment. Let me check your account details to see what options are available. Please provide your account number and verify your identity with your last name and either your date of birth or the last four digits of your SSN.",
+ "usage": {
+  "input_tokens": 3650,
+  "output_tokens": 66
+ },
+ "latency_ms": 36216.5
+}

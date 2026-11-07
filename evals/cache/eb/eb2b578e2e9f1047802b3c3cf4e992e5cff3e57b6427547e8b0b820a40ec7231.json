@@ -1,0 +1,18 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_m2brq0m3",
+   "name": "lookup_outage",
+   "arguments": {
+    "street": "949 Michael Causeway",
+    "zip_code": "01902"
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 4321,
+  "output_tokens": 34
+ },
+ "latency_ms": 58714.8
+}

@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Sure, I'd be happy to help! Could you please share your account number and the last name associated with it? This will allow me to look up your bill details.",
+ "usage": {
+  "input_tokens": 3647,
+  "output_tokens": 36
+ },
+ "latency_ms": 23605.8
+}

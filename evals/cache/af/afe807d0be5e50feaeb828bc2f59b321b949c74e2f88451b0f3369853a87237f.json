@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "According to our policy, a late fee can be waived once per account in any 12-month period, and only if the bill actually includes a late fee. Since this is your first time being late, I can apply for a late fee waiver. Let me check your account details to proceed.",
- "usage": {
-  "input_tokens": 4146,
-  "output_tokens": 61
- },
- "latency_ms": 23383.2
-}

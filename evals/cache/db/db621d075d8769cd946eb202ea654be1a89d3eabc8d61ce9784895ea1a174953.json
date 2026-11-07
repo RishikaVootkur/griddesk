@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I'm sorry, but it seems you already have an active payment plan. If you need to adjust or pause your current plan, please let me know, and I'll assist you further.",
- "usage": {
-  "input_tokens": 4640,
-  "output_tokens": 39
- },
- "latency_ms": 6474.8
-}

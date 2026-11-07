@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Thank you for providing your account details. I need your date of birth or the last four digits of your Social Security Number to proceed.",
- "usage": {
-  "input_tokens": 3716,
-  "output_tokens": 28
- },
- "latency_ms": 14076.8
-}

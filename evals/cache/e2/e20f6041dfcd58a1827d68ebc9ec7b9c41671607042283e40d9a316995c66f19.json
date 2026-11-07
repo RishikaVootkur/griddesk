@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Yes, please. Could you repeat the balance amount and confirm that it will be split into three equal monthly payments?",
+ "usage": {
+  "input_tokens": 677,
+  "output_tokens": 58
+ },
+ "latency_ms": 505.4,
+ "cost_usd": 0.00013635
+}

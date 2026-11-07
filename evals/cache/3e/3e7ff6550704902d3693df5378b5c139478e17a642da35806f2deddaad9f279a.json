@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Your latest bill (B-100166-2609) shows an estimated reading. Would you like to request a meter check to verify the reading?",
- "usage": {
-  "input_tokens": 4211,
-  "output_tokens": 37
- },
- "latency_ms": 29326.6
-}

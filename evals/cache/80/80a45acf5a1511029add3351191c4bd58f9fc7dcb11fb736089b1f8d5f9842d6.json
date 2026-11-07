@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I understand. Let's try verifying with your date of birth. If you don't have it, we can proceed with another method. Would you like to try again with your date of birth, or is there another way I can assist?",
- "usage": {
-  "input_tokens": 3921,
-  "output_tokens": 49
- },
- "latency_ms": 34609.9
-}

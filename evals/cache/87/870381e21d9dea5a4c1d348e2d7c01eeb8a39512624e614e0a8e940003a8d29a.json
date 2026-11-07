@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Could you let me know what my balance is and if I can split it into three monthly payments?",
+ "usage": {
+  "input_tokens": 599,
+  "output_tokens": 40
+ },
+ "latency_ms": 385.6,
+ "cost_usd": 0.00011384999999999999
+}

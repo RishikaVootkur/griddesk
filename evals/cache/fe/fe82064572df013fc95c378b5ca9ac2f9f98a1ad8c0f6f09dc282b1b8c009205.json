@@ -1,0 +1,18 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_f03mceau",
+   "name": "search_policy",
+   "arguments": {
+    "query": "why does the balance need to be at least $100 to set up a payment plan",
+    "k": 5
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 4444,
+  "output_tokens": 41
+ },
+ "latency_ms": 47585.4
+}

@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "The policy requires a balance of at least $100.00 to set up a payment plan because it ensures that the plan is for a significant amount, making it more manageable for the customer. Since your balance is $64.20, which is below this threshold, we cannot set up a payment plan at this time. Would you like to pay the full balance now, or is there anything else I can assist you with?",
+ "usage": {
+  "input_tokens": 5067,
+  "output_tokens": 91
+ },
+ "latency_ms": 68980.0
+}

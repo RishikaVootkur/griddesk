@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "The late fee of $15.00 has been waived from your account. Your new balance is now $486.32. If you have any other questions or need further assistance, feel free to ask!",
- "usage": {
-  "input_tokens": 4740,
-  "output_tokens": 47
- },
- "latency_ms": 40821.3
-}

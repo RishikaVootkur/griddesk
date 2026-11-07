@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Your current account balance is $243.92. If you need further assistance or have any questions, feel free to ask!",
- "usage": {
-  "input_tokens": 4046,
-  "output_tokens": 29
- },
- "latency_ms": 13534.7
-}

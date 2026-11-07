@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I'm here to help! Could you please share the last four digits of your Social Security Number so I can verify your identity and provide your current balance?",
- "usage": {
-  "input_tokens": 4248,
-  "output_tokens": 32
- },
- "latency_ms": 35282.2
-}

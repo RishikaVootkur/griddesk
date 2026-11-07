@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I’m not sure of the exact street address on file. Could you look it up with my account number?",
+ "usage": {
+  "input_tokens": 607,
+  "output_tokens": 46
+ },
+ "latency_ms": 399.4,
+ "cost_usd": 0.00011865
+}

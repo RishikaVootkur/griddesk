@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Gardner, 1949-09-06",
+ "usage": {
+  "input_tokens": 558,
+  "output_tokens": 31
+ },
+ "latency_ms": 421.4,
+ "cost_usd": 0.00010229999999999999
+}
