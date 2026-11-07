@@ -4,12 +4,13 @@ Resume here after a restart: read the latest entry, then `PLAN.md`.
 
 ## Status
 
-- Done (merged): M0 setup (#1), M1 database (#2), M2 policy (#3), M4 gateway (#4), M3 billing MCP (#5), M5 agent (#6).
-- In review: M6+M7 eval harness and CI gate (this PR), M13 web app (#7).
-- Stacked and pushed, PR after the harness merges: `feat/specialist-agents` (M8 outages/accounts/knowledge servers, M9 triage + specialists), `feat/guardrails` (M10).
-- In progress (subagent): `feat/task-suite` (80+ tasks, 42+ attacks).
-- Next: M11 tracing, M12 API, experiments (M15), scheduled eval + Pages (M16), docs (M17).
-- Blockers: Gemini free quotas (see below). Gemini resets at midnight Pacific.
+- Merged: #1 setup, #2 database, #3 policy, #4 gateway, #5 billing MCP, #6 agent, #7 web app, #8 eval harness and CI gate.
+- In review (stacked): #9 specialist agents (base main), #10 task suite (base #9), #11 guardrails (base #9), #12 API, tracing and compose (base #11).
+- Experiments run from a local integration worktree (`.griddesk/worktrees/exp`, branch `exp/integration` = main + all stacked branches + experiment tooling). Its extra commits (analysis, results tables, docs drafts, live-eval and Pages workflows) become the final PRs after the stack merges.
+- Repo secret `GEMINI_API_KEY` set; GitHub Pages enabled (workflow mode): https://rishikavootkur.github.io/griddesk/
+- Running: core-30 model comparison (Gemini flash-lite, Groq qwen3.8-27b), core-30 x 4 on local qwen3:8b (pass^k), attack suite with all defenses (local).
+- Next: attack ablations (none, in-tool only, in-tool + guard), single vs multi, simulator validation, error analysis and two fixes, README, resume bullets.
+- Bottleneck: the simulator's Groq quota (8k tokens per minute per model) caps throughput at about two trials a minute across all runs.
 
 ## Model selection (2026-11-03, from each provider's model list API)
 
