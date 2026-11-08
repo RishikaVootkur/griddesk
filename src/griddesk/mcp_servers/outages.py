@@ -7,7 +7,7 @@ from typing import Annotated
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
-from griddesk.mcp_servers.common import ConversationId
+from griddesk.mcp_servers.common import ConversationId, GridDeskServer
 from griddesk.tools import outages
 from griddesk.tools.common import ToolContext, run_tool
 
@@ -17,7 +17,7 @@ Unit = Annotated[str | None, Field(description="Apartment or unit, e.g. 'Apt 3',
 
 
 def build_outages_server(ctx: ToolContext) -> MCPServer:
-    server = MCPServer(
+    server = GridDeskServer(
         "griddesk-outages",
         instructions="Outage status for an address (no verification needed), outage reports and estimates.",
     )

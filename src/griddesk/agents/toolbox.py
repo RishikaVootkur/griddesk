@@ -19,6 +19,7 @@ from typing import Any
 from mcp import Client
 from mcp.server.mcpserver import MCPServer
 
+from griddesk.db.session import LOCK_TIMEOUT_MARKER, TrialConflict
 from griddesk.gateway import ToolSpec
 from griddesk.guardrails.action_guard import ActionGuard
 from griddesk.guardrails.injection import filter_result, spotlight
@@ -59,6 +60,9 @@ class Toolbox:
     guard: ActionGuard | None = None
     spotlight: bool = True
     injection_filter: bool = True
+    # Eval trials only: a tool blocked by another trial's rows raises TrialConflict so the runner can
+    # retry the trial. Off for live conversations, where it is an ordinary tool failure.
+    trial_mode: bool = False
     guardrail_events: deque[dict[str, Any]] = field(default_factory=deque)
     _stack: AsyncExitStack | None = None
 
@@ -232,6 +236,8 @@ class Toolbox:
         result = await client.call_tool(name, payload)
         if result.is_error or result.structured_content is None:
             text = " ".join(getattr(c, "text", "") for c in result.content)[:400]
+            if self.trial_mode and text.strip() == LOCK_TIMEOUT_MARKER:
+                raise TrialConflict(f"{name} blocked by another trial")
             log = ToolCallLog(conversation_id, agent, name, logged, True, False, False, "invalid_request")
             self.calls.append(log)
             return {
@@ -290,6 +296,8 @@ class Toolbox:
         )
         if result.is_error or result.structured_content is None:
             text = " ".join(getattr(c, "text", "") for c in result.content)[:300]
+            if self.trial_mode and text.strip() == LOCK_TIMEOUT_MARKER:
+                raise TrialConflict(f"{action} blocked by another trial")
             return {"ok": False, "error": {"code": "invalid_request", "message": text or "execution failed"}}
         out: dict[str, Any] = result.structured_content
         return out

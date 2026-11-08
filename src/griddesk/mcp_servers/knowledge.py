@@ -7,13 +7,15 @@ from typing import Annotated
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
-from griddesk.mcp_servers.common import ConversationId
+from griddesk.mcp_servers.common import ConversationId, GridDeskServer
 from griddesk.tools import knowledge
 from griddesk.tools.common import ToolContext, run_tool
 
 
 def build_knowledge_server(ctx: ToolContext) -> MCPServer:
-    server = MCPServer("griddesk-knowledge", instructions="Search the customer-operations policy handbook.")
+    server = GridDeskServer(
+        "griddesk-knowledge", instructions="Search the customer-operations policy handbook."
+    )
 
     @server.tool(
         description="Search the policy handbook (rules, rates, procedures). Returns the best passages."

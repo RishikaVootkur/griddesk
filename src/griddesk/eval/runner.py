@@ -14,22 +14,24 @@ from __future__ import annotations
 import asyncio
 import json
 import platform
+import random
 import re
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
 from sqlalchemy import Engine, select
+from sqlalchemy.exc import OperationalError
 
 from griddesk.agents.graph import AgentConfig
 from griddesk.agents.runtime import ConversationRunner, Design
 from griddesk.agents.toolbox import Toolbox
 from griddesk.config import get_settings
 from griddesk.db import models as m
-from griddesk.db.session import trial_scope
+from griddesk.db.session import TrialConflict, is_lock_timeout, raise_if_lock_timeout, trial_scope
 from griddesk.eval.expected import expected_diff
 from griddesk.eval.metrics import TrialMetrics, summarize
 from griddesk.eval.simulator import UserSimulator
@@ -67,6 +69,8 @@ class EvalConfig:
     defenses: Defenses = field(default_factory=Defenses)
     trials: int = 1
     concurrency: int = 2
+    conflict_retries: int = 20  # a trial blocked by another trial's rows is retried, never scored
+    conflict_backoff_s: float = 30.0
     suite: str = "tasks"
     label: str = ""
 
@@ -100,6 +104,38 @@ class TrialRecord:
     sim_stopped: bool
     guardrail_events: list[dict[str, Any]] = field(default_factory=list)
     error: str | None = None
+
+    @classmethod
+    def errored(cls, task_id: str, trial: int, error: str) -> TrialRecord:
+        """A trial that never ran to the end. Errored trials are excluded from success scoring."""
+        return cls(
+            task_id=task_id,
+            trial=trial,
+            success=False,
+            state_match=False,
+            outputs_ok=False,
+            violation=False,
+            violations=[],
+            attempted_violations=[],
+            tool_calls=[],
+            approval_requested=False,
+            approval_correct=False,
+            escalations=[],
+            escalation_correct=False,
+            turns=0,
+            agent_tokens=0,
+            sim_tokens=0,
+            agent_cost_usd=0.0,
+            turn_latencies_ms=[],
+            cache_hits=0,
+            llm_calls=0,
+            transcript=[],
+            state_mismatch={},
+            actual_diff={},
+            handoffs=[],
+            sim_stopped=False,
+            error=error,
+        )
 
     @property
     def attack_succeeded(self) -> bool:
@@ -232,6 +268,7 @@ async def run_trial(
             else None
         )
         toolbox.spotlight = cfg.defenses.spotlight
+        toolbox.trial_mode = True
         toolbox.injection_filter = cfg.defenses.injection_filter
         error: str | None = None
         transcript: list[tuple[str, str]] = []
@@ -283,7 +320,10 @@ async def run_trial(
                 if res.error:
                     error = res.error
                     break
+        except TrialConflict:
+            raise
         except Exception as e:
+            raise_if_lock_timeout(e)
             error = f"{type(e).__name__}: {str(e)[:300]}"
         finally:
             await toolbox.close()
@@ -383,6 +423,29 @@ def attack_summary(records: Sequence[TrialRecord], by_id: Mapping[str, Task]) ->
     return out
 
 
+async def retry_conflicts[T](
+    make: Callable[[], Awaitable[T]],
+    sem: asyncio.Semaphore,
+    retries: int,
+    backoff_s: float,
+    label: str = "",
+) -> T:
+    """Run a trial, retrying it when another trial's rows blocked it (see `griddesk.db.session`)."""
+    for attempt in range(retries + 1):
+        async with sem:
+            try:
+                return await make()
+            except (TrialConflict, OperationalError) as e:
+                if isinstance(e, OperationalError) and not is_lock_timeout(e):
+                    raise
+                if attempt == retries:
+                    raise TrialConflict(f"{label} still blocked after {retries} retries") from e
+        # Outside the semaphore, so the trial holding the row can finish. Calls made before the
+        # conflict replay from the cache on the retry.
+        await asyncio.sleep(backoff_s * random.uniform(1.0, 2.0))
+    raise AssertionError("unreachable")
+
+
 async def run_suite(
     tasks: Sequence[Task], cfg: EvalConfig, gateway: Gateway, engine: Engine, progress: Any = None
 ) -> dict[str, Any]:
@@ -391,11 +454,20 @@ async def run_suite(
     started = time.time()
 
     async def one(task: Task, trial: int) -> TrialRecord:
-        async with sem:
-            rec = await run_trial(task, trial, cfg, gateway, engine, expected[task.id])
-            if progress:
-                progress(rec)
-            return rec
+        try:
+            rec = await retry_conflicts(
+                lambda: run_trial(task, trial, cfg, gateway, engine, expected[task.id]),
+                sem,
+                cfg.conflict_retries,
+                cfg.conflict_backoff_s,
+                label=f"{task.id} t{trial}",
+            )
+        except TrialConflict as e:
+            # Still blocked after every retry: an errored trial (excluded from scoring), not a lost suite.
+            rec = TrialRecord.errored(task.id, trial, f"TrialConflict: {e}")
+        if progress:
+            progress(rec)
+        return rec
 
     records = await asyncio.gather(*(one(t, i) for t in tasks for i in range(cfg.trials)))
     records = sorted(records, key=lambda r: (r.task_id, r.trial))
