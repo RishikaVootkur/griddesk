@@ -41,9 +41,17 @@ class TrialConflict(Exception):
     """An eval trial waited too long on a row another trial holds. Retry it; do not score it."""
 
 
-def is_lock_timeout(error: BaseException | str) -> bool:
-    text = str(error)
-    return "lock timeout" in text or "LockNotAvailable" in text
+# What an MCP server sends instead of a lock-timeout crash. The client matches this exact text, so
+# nothing a model types into a tool argument can be mistaken for it.
+LOCK_TIMEOUT_MARKER = "GRIDDESK_LOCK_TIMEOUT"
+_LOCK_ERRORS = ("lock timeout", "LockNotAvailable", "deadlock detected", "DeadlockDetected")
+
+
+def is_lock_timeout(error: BaseException) -> bool:
+    """A database error that means another transaction holds the rows: a lock timeout, or a deadlock
+    Postgres detected between two trials. Only for exceptions, never for text a model could write."""
+    text = f"{type(error).__name__} {error} {type(getattr(error, 'orig', None)).__name__}"
+    return any(k in text for k in _LOCK_ERRORS)
 
 
 def raise_if_lock_timeout(error: BaseException) -> None:

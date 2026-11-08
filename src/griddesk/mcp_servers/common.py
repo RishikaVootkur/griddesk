@@ -8,7 +8,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
 from pydantic import Field
 
-from griddesk.db.session import is_lock_timeout
+from griddesk.db.session import LOCK_TIMEOUT_MARKER, is_lock_timeout
 
 # The runtime always overwrites this argument with the real conversation id, and hides it from the
 # model's view of the schema, so the model cannot act in another conversation's verified session.
@@ -35,5 +35,5 @@ class GridDeskServer(MCPServer):
             return await super().call_tool(name, arguments, context)
         except UnexpectedToolError as e:
             if e.__cause__ is not None and is_lock_timeout(e.__cause__):
-                raise ToolError("lock timeout: blocked by another transaction") from e
+                raise ToolError(LOCK_TIMEOUT_MARKER) from e
             raise

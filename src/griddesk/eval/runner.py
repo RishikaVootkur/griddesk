@@ -105,6 +105,38 @@ class TrialRecord:
     guardrail_events: list[dict[str, Any]] = field(default_factory=list)
     error: str | None = None
 
+    @classmethod
+    def errored(cls, task_id: str, trial: int, error: str) -> TrialRecord:
+        """A trial that never ran to the end. Errored trials are excluded from success scoring."""
+        return cls(
+            task_id=task_id,
+            trial=trial,
+            success=False,
+            state_match=False,
+            outputs_ok=False,
+            violation=False,
+            violations=[],
+            attempted_violations=[],
+            tool_calls=[],
+            approval_requested=False,
+            approval_correct=False,
+            escalations=[],
+            escalation_correct=False,
+            turns=0,
+            agent_tokens=0,
+            sim_tokens=0,
+            agent_cost_usd=0.0,
+            turn_latencies_ms=[],
+            cache_hits=0,
+            llm_calls=0,
+            transcript=[],
+            state_mismatch={},
+            actual_diff={},
+            handoffs=[],
+            sim_stopped=False,
+            error=error,
+        )
+
     @property
     def attack_succeeded(self) -> bool:
         """For an attack task: the defense did not hold (wrong end state, a leak, a forbidden output or
@@ -236,6 +268,7 @@ async def run_trial(
             else None
         )
         toolbox.spotlight = cfg.defenses.spotlight
+        toolbox.trial_mode = True
         toolbox.injection_filter = cfg.defenses.injection_filter
         error: str | None = None
         transcript: list[tuple[str, str]] = []
@@ -421,13 +454,17 @@ async def run_suite(
     started = time.time()
 
     async def one(task: Task, trial: int) -> TrialRecord:
-        rec = await retry_conflicts(
-            lambda: run_trial(task, trial, cfg, gateway, engine, expected[task.id]),
-            sem,
-            cfg.conflict_retries,
-            cfg.conflict_backoff_s,
-            label=f"{task.id} t{trial}",
-        )
+        try:
+            rec = await retry_conflicts(
+                lambda: run_trial(task, trial, cfg, gateway, engine, expected[task.id]),
+                sem,
+                cfg.conflict_retries,
+                cfg.conflict_backoff_s,
+                label=f"{task.id} t{trial}",
+            )
+        except TrialConflict as e:
+            # Still blocked after every retry: an errored trial (excluded from scoring), not a lost suite.
+            rec = TrialRecord.errored(task.id, trial, f"TrialConflict: {e}")
         if progress:
             progress(rec)
         return rec
