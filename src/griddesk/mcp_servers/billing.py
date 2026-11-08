@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
-from griddesk.mcp_servers.common import INTERNAL, ConversationId
+from griddesk.mcp_servers.common import INTERNAL, ConversationId, GridDeskServer
 from griddesk.tools import approvals, billing, registry  # noqa: F401 (registry registers executors)
 from griddesk.tools.common import ToolContext, run_tool
 
@@ -17,7 +17,7 @@ ReasonCode = Literal["late_fee_waiver", "outage_compensation", "billing_error", 
 
 
 def build_billing_server(ctx: ToolContext) -> MCPServer:
-    server = MCPServer(
+    server = GridDeskServer(
         "griddesk-billing",
         instructions="Bills, balances, charge explanations, credits, payment plans and disputes. "
         "Every account-specific tool requires identity verification in this conversation.",

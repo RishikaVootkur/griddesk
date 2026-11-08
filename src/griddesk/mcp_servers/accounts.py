@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
-from griddesk.mcp_servers.common import INTERNAL, ConversationId
+from griddesk.mcp_servers.common import INTERNAL, ConversationId, GridDeskServer
 from griddesk.tools import (
     accounts,
     approvals,
@@ -25,7 +25,7 @@ Category = Literal["billing_dispute", "hazard", "identity_lockout", "medical", "
 
 
 def build_accounts_server(ctx: ToolContext) -> MCPServer:
-    server = MCPServer(
+    server = GridDeskServer(
         "griddesk-accounts",
         instructions="Identity verification, escalation to a human, and account changes.",
     )

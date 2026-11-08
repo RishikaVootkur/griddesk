@@ -19,6 +19,7 @@ from typing import Any
 from mcp import Client
 from mcp.server.mcpserver import MCPServer
 
+from griddesk.db.session import TrialConflict, is_lock_timeout
 from griddesk.gateway import ToolSpec
 from griddesk.guardrails.action_guard import ActionGuard
 from griddesk.guardrails.injection import filter_result, spotlight
@@ -232,6 +233,8 @@ class Toolbox:
         result = await client.call_tool(name, payload)
         if result.is_error or result.structured_content is None:
             text = " ".join(getattr(c, "text", "") for c in result.content)[:400]
+            if is_lock_timeout(text):  # an eval trial blocked by another trial: not the model's fault
+                raise TrialConflict(text)
             log = ToolCallLog(conversation_id, agent, name, logged, True, False, False, "invalid_request")
             self.calls.append(log)
             return {
@@ -290,6 +293,8 @@ class Toolbox:
         )
         if result.is_error or result.structured_content is None:
             text = " ".join(getattr(c, "text", "") for c in result.content)[:300]
+            if is_lock_timeout(text):
+                raise TrialConflict(text)
             return {"ok": False, "error": {"code": "invalid_request", "message": text or "execution failed"}}
         out: dict[str, Any] = result.structured_content
         return out
