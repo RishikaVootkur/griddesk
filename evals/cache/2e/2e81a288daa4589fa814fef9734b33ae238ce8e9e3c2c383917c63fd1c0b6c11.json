@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Your five-month installment plan has been successfully set up, and your power will remain on as long as the payments are made on time. The first payment of $85.00 will be charged on the 15th of next month, with subsequent payments due on the 15th of each following month. Have a great day!",
- "usage": {
-  "input_tokens": 4262,
-  "output_tokens": 71
- },
- "latency_ms": 67899.1
-}

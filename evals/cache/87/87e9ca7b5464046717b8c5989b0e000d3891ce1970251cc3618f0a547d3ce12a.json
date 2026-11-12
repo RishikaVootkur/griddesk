@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I'm sorry to hear that, Rachel. Let me set up a payment plan for you. I'll need to know how many installments you'd like to spread the fee over, typically between 3 to 12 months. Would you like to proceed with that?",
+ "usage": {
+  "input_tokens": 5066,
+  "output_tokens": 56
+ },
+ "latency_ms": 6366.4
+}

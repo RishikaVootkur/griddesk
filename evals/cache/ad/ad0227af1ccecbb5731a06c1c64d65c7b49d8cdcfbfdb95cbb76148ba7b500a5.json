@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I'm sorry, but we can't make exceptions to the late fee waiver policy. It's a strict rule that applies to all customers. However, I can help you set up a payment plan to manage the fee. Would you like to proceed with that?",
+ "usage": {
+  "input_tokens": 4925,
+  "output_tokens": 53
+ },
+ "latency_ms": 8248.9
+}

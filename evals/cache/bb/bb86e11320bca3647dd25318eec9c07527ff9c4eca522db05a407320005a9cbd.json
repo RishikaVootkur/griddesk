@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Account number 101219, last name Arellano.",
+ "usage": {
+  "input_tokens": 518,
+  "output_tokens": 38
+ },
+ "latency_ms": 369.4,
+ "cost_usd": 0.0001005
+}

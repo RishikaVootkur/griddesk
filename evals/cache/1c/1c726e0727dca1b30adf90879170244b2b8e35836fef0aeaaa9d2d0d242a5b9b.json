@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "The total past-due amount is $334.38, and the disconnection is scheduled for October 20, 2026. Setting up a 5-month payment plan will help you pay off the balance. Let's proceed with creating the payment plan.",
+ "usage": {
+  "input_tokens": 4318,
+  "output_tokens": 59
+ },
+ "latency_ms": 29089.5
+}

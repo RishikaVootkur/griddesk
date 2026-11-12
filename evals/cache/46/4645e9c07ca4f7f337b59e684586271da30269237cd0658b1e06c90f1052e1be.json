@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I’d like to discuss a payment plan for my balance.We need to respond as Janice asking for 6 installments.I can’t pay the full amount right now. Can I set up a plan to pay it off in six equal monthly installments?",
+ "usage": {
+  "input_tokens": 647,
+  "output_tokens": 84
+ },
+ "latency_ms": 441.9,
+ "cost_usd": 0.00014744999999999998
+}

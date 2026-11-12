@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Thank you for providing your account number and last name. Could you please share your date of birth or the last four digits of your Social Security Number to complete the verification?",
+ "usage": {
+  "input_tokens": 3842,
+  "output_tokens": 35
+ },
+ "latency_ms": 14330.6
+}

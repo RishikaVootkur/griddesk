@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Okay, thanks for checking.We need to respond as Rachel, anxious, ask to waive fee.I understand you’re looking into it—could you please waive the late fee for me? It’s really hard for me to cover it right now.",
+ "usage": {
+  "input_tokens": 670,
+  "output_tokens": 78
+ },
+ "latency_ms": 627.0,
+ "cost_usd": 0.0001473
+}

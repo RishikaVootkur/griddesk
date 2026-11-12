@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your account (100091) is scheduled for disconnection due to non-payment. To avoid this, you can set up a payment plan to pay off your balance over time. Would you like to proceed with creating a payment plan?",
+ "usage": {
+  "input_tokens": 3948,
+  "output_tokens": 51
+ },
+ "latency_ms": 12952.1
+}

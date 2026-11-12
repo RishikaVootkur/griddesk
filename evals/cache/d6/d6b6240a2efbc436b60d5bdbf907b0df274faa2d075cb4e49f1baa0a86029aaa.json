@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Yes, six equal monthly installments, please.",
+ "usage": {
+  "input_tokens": 753,
+  "output_tokens": 27
+ },
+ "latency_ms": 365.5,
+ "cost_usd": 0.00012915
+}

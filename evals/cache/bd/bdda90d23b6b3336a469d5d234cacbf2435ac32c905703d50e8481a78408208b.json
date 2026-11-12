@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Account number 100266, and I’d like a 4‑month installment plan.",
+ "usage": {
+  "input_tokens": 532,
+  "output_tokens": 46
+ },
+ "latency_ms": 533.2,
+ "cost_usd": 0.0001074
+}

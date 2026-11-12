@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "You're welcome! We'll reach out to you once the specialist has reviewed your case. Have a great day!",
+ "usage": {
+  "input_tokens": 4092,
+  "output_tokens": 24
+ },
+ "latency_ms": 27370.9
+}

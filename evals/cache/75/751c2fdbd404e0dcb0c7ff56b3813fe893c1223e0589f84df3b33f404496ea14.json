@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "The address associated with your account is 949 Michael Causeway, Alder Falls. Could you confirm if this is the address where the outage occurred?",
+ "usage": {
+  "input_tokens": 4348,
+  "output_tokens": 33
+ },
+ "latency_ms": 32964.9
+}

@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Account number: 100091  \nLast name: Johnson  \nLast four of SSN: 8028",
+ "usage": {
+  "input_tokens": 591,
+  "output_tokens": 50
+ },
+ "latency_ms": 372.7,
+ "cost_usd": 0.00011865
+}

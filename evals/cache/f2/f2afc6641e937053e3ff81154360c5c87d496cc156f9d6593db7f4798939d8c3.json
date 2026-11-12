@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Wong, DOB 1956-07-05.",
+ "usage": {
+  "input_tokens": 597,
+  "output_tokens": 30
+ },
+ "latency_ms": 520.3,
+ "cost_usd": 0.00010755
+}

@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I don’t have that information handy.",
+ "usage": {
+  "input_tokens": 646,
+  "output_tokens": 31
+ },
+ "latency_ms": 552.5,
+ "cost_usd": 0.00011549999999999999
+}

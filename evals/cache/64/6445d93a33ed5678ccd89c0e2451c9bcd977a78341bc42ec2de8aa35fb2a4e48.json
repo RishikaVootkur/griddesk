@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I've verified your identity. Let me check the meter reading for your account. One moment, please.",
+ "usage": {
+  "input_tokens": 4049,
+  "output_tokens": 22
+ },
+ "latency_ms": 23022.8
+}

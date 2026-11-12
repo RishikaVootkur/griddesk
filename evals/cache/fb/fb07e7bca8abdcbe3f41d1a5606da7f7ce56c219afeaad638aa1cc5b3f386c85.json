@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Thank you for providing your account number and last name. To proceed, I need to verify your identity. Could you please provide either your date of birth or the last four digits of your Social Security Number?",
+ "usage": {
+  "input_tokens": 3841,
+  "output_tokens": 42
+ },
+ "latency_ms": 27797.2
+}

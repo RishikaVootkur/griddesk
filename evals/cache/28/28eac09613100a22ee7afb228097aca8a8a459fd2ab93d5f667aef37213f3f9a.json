@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I'll look up your account details. One moment, please.",
+ "usage": {
+  "input_tokens": 3846,
+  "output_tokens": 14
+ },
+ "latency_ms": 23938.8
+}

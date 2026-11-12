@@ -1,0 +1,19 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_2fzslv92",
+   "name": "escalate_to_human",
+   "arguments": {
+    "summary": "Customer requested to speak with a representative after multiple identity verification attempts.",
+    "account_id": "100056",
+    "category": "other"
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 4443,
+  "output_tokens": 47
+ },
+ "latency_ms": 31080.7
+}

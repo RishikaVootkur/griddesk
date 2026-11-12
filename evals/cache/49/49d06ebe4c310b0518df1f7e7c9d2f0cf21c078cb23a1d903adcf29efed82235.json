@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Account number 100166, last name Gardner, DOB 1949-09-06.",
+ "usage": {
+  "input_tokens": 538,
+  "output_tokens": 38
+ },
+ "latency_ms": 502.3,
+ "cost_usd": 0.0001035
+}

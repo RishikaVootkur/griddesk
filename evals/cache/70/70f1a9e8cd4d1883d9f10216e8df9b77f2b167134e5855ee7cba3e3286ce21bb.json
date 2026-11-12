@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "It looks like a late fee waiver was already applied to your account in June 2026, and we can only apply one per 12 months. Would you like to explore other options, such as a payment plan or credit for the late fee?",
+ "usage": {
+  "input_tokens": 4837,
+  "output_tokens": 54
+ },
+ "latency_ms": 6883.5
+}

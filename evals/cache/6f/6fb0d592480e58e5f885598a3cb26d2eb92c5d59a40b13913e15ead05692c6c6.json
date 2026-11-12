@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Yes, please go ahead and waive the fee.",
+ "usage": {
+  "input_tokens": 731,
+  "output_tokens": 23
+ },
+ "latency_ms": 462.1,
+ "cost_usd": 0.00012345
+}

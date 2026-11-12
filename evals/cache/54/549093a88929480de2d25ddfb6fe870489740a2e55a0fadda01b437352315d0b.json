@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "The late fee on your latest bill (B-100036-2609) is $15.00. I can apply a late fee waiver for you. Would you like me to proceed with that?",
+ "usage": {
+  "input_tokens": 4608,
+  "output_tokens": 50
+ },
+ "latency_ms": 30855.7
+}
