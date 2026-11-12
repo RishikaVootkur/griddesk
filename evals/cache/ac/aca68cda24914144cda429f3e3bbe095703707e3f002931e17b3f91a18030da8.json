@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Yes, please connect me to a representative.",
+ "usage": {
+  "input_tokens": 676,
+  "output_tokens": 50
+ },
+ "latency_ms": 503.1,
+ "cost_usd": 0.00013139999999999997
+}

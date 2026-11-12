@@ -1,0 +1,18 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_2wrrsbmt",
+   "name": "create_payment_plan",
+   "arguments": {
+    "account_id": "100266",
+    "installments": 4
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 3771,
+  "output_tokens": 34
+ },
+ "latency_ms": 31157.1
+}

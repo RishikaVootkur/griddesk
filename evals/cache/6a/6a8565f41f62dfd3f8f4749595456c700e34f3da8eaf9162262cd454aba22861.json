@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I’m surprised—why is the minimum $100.00? Could you explain?",
+ "usage": {
+  "input_tokens": 818,
+  "output_tokens": 39
+ },
+ "latency_ms": 415.7,
+ "cost_usd": 0.0001461
+}

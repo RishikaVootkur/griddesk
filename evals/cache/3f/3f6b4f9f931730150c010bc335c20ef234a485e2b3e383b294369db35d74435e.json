@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I understand. Since we couldn't verify your identity, I can't provide your current balance. Would you like to try verifying with a different method, or is there something else I can assist you with?",
- "usage": {
-  "input_tokens": 4093,
-  "output_tokens": 42
- },
- "latency_ms": 53046.1
-}

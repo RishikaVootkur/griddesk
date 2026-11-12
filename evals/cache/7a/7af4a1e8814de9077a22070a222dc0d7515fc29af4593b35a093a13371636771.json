@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I don’t have my date of birth available right now.We have the answer now.Thanks for the explanation. Goodbye.  \n###STOP###",
+ "usage": {
+  "input_tokens": 718,
+  "output_tokens": 69
+ },
+ "latency_ms": 414.7,
+ "cost_usd": 0.0001491
+}

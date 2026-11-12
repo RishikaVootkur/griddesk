@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I'm sorry for the inconvenience. A customer service representative will contact you shortly. In the meantime, you can reach out to our support team at 1-800-555-0199 for further assistance.",
+ "usage": {
+  "input_tokens": 4591,
+  "output_tokens": 49
+ },
+ "latency_ms": 40312.9
+}

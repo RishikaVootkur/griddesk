@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 from sqlalchemy import select
 
-from griddesk.agents.graph import AgentConfig
+from griddesk.agents.graph import NUDGE_NOTE, RUNTIME_NOTICE, AgentConfig, is_internal_note, promises_handoff
 from griddesk.agents.runtime import ConversationRunner
 from griddesk.agents.toolbox import Toolbox
 from griddesk.db import models as m
@@ -343,3 +343,92 @@ async def test_specialist_cannot_call_another_specialists_tool(sessions):
     await runner.send("conv-m2", "stop my service")
     assert tb.calls[-1].tool == "stop_service" and tb.calls[-1].known_tool is False
     await tb.close()
+
+
+async def test_promised_handoff_without_a_transfer_call_is_nudged_once(sessions):
+    ctx = make_ctx(sessions)
+    runner, tb, fake = await multi_runner(
+        ctx,
+        [
+            say("Let me connect you with our account specialist."),
+            use("transfer_to_account", 1, reason="paperless"),
+            say("Happy to help with paperless. What is your account number?"),
+        ],
+    )
+    res = await runner.send("conv-n1", "I want paperless billing.")
+    assert [h["to"] for h in tb.handoffs] == ["account"] and res.agents[-1] == "account"
+    assert res.reply.endswith("What is your account number?")
+    assert "did not call a transfer_to_* tool" in fake.requests[1].messages[-1].content
+    await tb.close()
+
+
+async def test_nudge_fires_at_most_once_a_turn(sessions):
+    ctx = make_ctx(sessions)
+    runner, tb, fake = await multi_runner(
+        ctx,
+        [
+            say("Let me connect you with our billing team."),
+            say("I'll connect you with our billing specialist shortly."),
+            say("Let me connect you with our billing team."),
+            say("Sorry, what do you need help with?"),
+        ],
+    )
+    await runner.send("conv-n2", "question about my bill")
+    assert len(fake.requests) == 2 and not tb.handoffs  # nudged once, then the turn ends
+    await runner.send("conv-n2", "hello?")
+    assert len(fake.requests) == 4  # the flag resets each customer turn
+    await tb.close()
+
+
+async def test_single_agent_is_never_nudged(sessions):
+    ctx = make_ctx(sessions)
+    runner, tb, fake = await runner_for(ctx, [say("Let me connect you with our billing team.")])
+    await runner.send("conv-n3", "question about my bill")
+    assert len(fake.requests) == 1
+    await tb.close()
+
+
+async def test_specialist_reply_is_never_nudged(sessions):
+    ctx = make_ctx(sessions)
+    runner, tb, fake = await multi_runner(
+        ctx,
+        [
+            use("transfer_to_billing", 1, reason="bill"),
+            say("I can connect you with our outages team if you need anything else."),
+        ],
+    )
+    await runner.send("conv-n4", "question about my bill")
+    assert len(fake.requests) == 2 and [h["to"] for h in tb.handoffs] == ["billing"]
+    await tb.close()
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Let me connect you with our account specialist.", True),
+        ("I'm transferring you to the billing team now.", True),
+        ("I am routing you to an outages representative.", True),
+        ("I will transfer you to billing.", True),
+        ("Let me connect you with our outages desk.", True),
+        ("I will put you through to our account specialist.", True),
+        ("One moment while I transfer you.", True),
+        ("Let me get you to our billing specialist.", True),
+        ("I can connect you to an agent.", True),
+        ("I'll put you down for paperless billing on your account.", False),
+        ("We will transfer your service; our team will call you.", False),
+        ("We will send you a paper bill for your account.", False),
+        ("I can put you on a payment plan for this account.", False),
+        ("I will send you a confirmation of your outage report.", False),
+        ("Can I put you down for paperless billing?", False),
+    ],
+)
+def test_promises_handoff_phrases(text, expected):
+    assert promises_handoff(text) is expected
+
+
+def test_nudge_note_is_internal():
+    note = {"role": "user", "content": RUNTIME_NOTICE + NUDGE_NOTE, "internal": True}
+    approval = {"role": "user", "content": RUNTIME_NOTICE + "A supervisor denied request A-1."}
+    assert is_internal_note(note)
+    assert not is_internal_note(approval)
+    assert not is_internal_note({"role": "user", "content": "hi"})

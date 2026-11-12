@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Great, your identity has been verified. Let me check your account details to see about the late fee. One moment, please.",
+ "usage": {
+  "input_tokens": 4204,
+  "output_tokens": 27
+ },
+ "latency_ms": 57946.3
+}

@@ -1,0 +1,20 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_r5a59f7e",
+   "name": "apply_credit",
+   "arguments": {
+    "account_id": "100036",
+    "amount": "15.00",
+    "bill_id": "B-100036-2609",
+    "reason_code": "late_fee_waiver"
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 4681,
+  "output_tokens": 59
+ },
+ "latency_ms": 9296.2
+}

@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Your current balance is $64.20, and it will be split into three equal monthly payments of $21.40 each. Would you like me to set up the payment plan now?",
- "usage": {
-  "input_tokens": 4174,
-  "output_tokens": 43
- },
- "latency_ms": 31607.9
-}

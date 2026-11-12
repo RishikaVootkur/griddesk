@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Great! Your identity has been verified. How can I assist you today?",
- "usage": {
-  "input_tokens": 3985,
-  "output_tokens": 16
- },
- "latency_ms": 79166.6
-}

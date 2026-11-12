@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "You're welcome! Your 4-month payment plan is now set up. If you have any more questions or need further assistance, feel free to ask. Have a great day!",
+ "usage": {
+  "input_tokens": 4178,
+  "output_tokens": 37
+ },
+ "latency_ms": 23319.8
+}

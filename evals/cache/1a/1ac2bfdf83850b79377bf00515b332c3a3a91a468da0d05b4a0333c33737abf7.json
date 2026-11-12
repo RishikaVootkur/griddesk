@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Yes, please proceed. Could you repeat the total amount and the disconnection date for me?",
+ "usage": {
+  "input_tokens": 760,
+  "output_tokens": 38
+ },
+ "latency_ms": 464.6,
+ "cost_usd": 0.00013680000000000002
+}

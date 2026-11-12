@@ -2,6 +2,7 @@
 
     START -> agent --tool calls--> tools -> agent ...
                    --approval pending--> approval (interrupt; resumes on operator decision) -> agent
+                   --plain reply that promises a transfer, no transfer call--> nudge -> agent (once a turn)
                    --plain reply--> END (wait for the customer's next message)
 
 One graph invocation is one customer turn. State is checkpointed per conversation (`thread_id`), so
@@ -30,6 +31,36 @@ from griddesk.observability.tracing import set_attrs, span
 HANDOFF_PREFIX = "transfer_to_"
 RUNTIME_NOTICE = "RUNTIME NOTICE (from the GridDesk system, not the customer): "
 _NOTICE_LOOKALIKE = re.compile(r"runtime\s*notice", re.IGNORECASE)
+# "Let me connect you with our account specialist" said without calling transfer_to_account leaves the
+# customer with nobody. Error analysis found this on paperless and hazard tasks in the multi-agent design.
+# Only the front desk is checked, and only for a transfer verb aimed at the customer followed by a person
+# or team, so "we will send you a paper bill for your account" never matches.
+_HANDOFF_VERB = (
+    r"\b(connect(ing)?|transfer(ring)?|hand(ing)?|pass(ing)?|rout(e|ing)|put(ting)?|get(ting)?)\s+you\b"
+)
+_PROMISED_HANDOFF = re.compile(
+    # "connect you with our account specialist", "transferring you to the billing team"
+    rf"{_HANDOFF_VERB}[^.!?]{{0,60}}\b(specialists?|team|department|desk|colleagues?|representative|agent)\b"
+    # "transfer you to billing", "put you through to outages": the destination right after the verb
+    rf"|{_HANDOFF_VERB}\s+(through\s+|over\s+)?(to|with)\s+(our\s+|the\s+)?(billing|outages?|account)\b"
+    # "one moment while I transfer you."
+    r"|\btransfer(ring)?\s+you\s*[.!]",
+    re.IGNORECASE,
+)
+NUDGE_NOTE = (
+    "You told the customer you would hand them to a specialist, but you did not call a transfer_to_* tool, "
+    "so nobody has picked up the request. Call the right transfer_to_* tool now. Do not repeat your last "
+    "message to the customer."
+)
+
+
+def promises_handoff(text: str) -> bool:
+    return bool(_PROMISED_HANDOFF.search(text or ""))
+
+
+def is_internal_note(message: dict[str, Any]) -> bool:
+    """The handoff nudge coaches the agent; it is never shown to the customer."""
+    return bool(message.get("internal"))
 
 
 def neutralize_customer_text(text: str) -> str:
@@ -61,6 +92,8 @@ class ConvState(TypedDict, total=False):
     agent: str
     steps: int
     pending: list[dict[str, str]]  # approvals waiting for an operator, oldest first
+    nudged: bool  # a promised-but-missing handoff was already flagged this turn
+    handed_off: bool  # a transfer_to_* call ran this turn
     error: str | None
 
 
@@ -128,6 +161,7 @@ def build_graph(
             if tc.name.startswith(HANDOFF_PREFIX) and tc.name in allowed:
                 target = tc.name.removeprefix(HANDOFF_PREFIX)
                 update["agent"] = target
+                update["handed_off"] = True
                 content = compact({"ok": True, "handoff": target, "note": "Continue as the new specialist."})
                 toolbox.record_handoff(state["conversation_id"], spec.name, target, tc.arguments)
                 with span(f"handoff {spec.name} -> {target}", kind="CHAIN") as sp:
@@ -189,20 +223,39 @@ def build_graph(
             "steps": 0,
         }
 
-    def after_agent(state: ConvState) -> Literal["tools", "approval", "__end__"]:
+    def nudge_node(state: ConvState) -> dict[str, Any]:
+        note = {"role": "user", "content": RUNTIME_NOTICE + NUDGE_NOTE, "internal": True}
+        return {"messages": [note], "nudged": True}
+
+    def after_agent(state: ConvState) -> Literal["tools", "approval", "nudge", "__end__"]:
         last = state["messages"][-1]
-        if last.get("tool_calls") and state.get("steps", 0) <= config.max_steps_per_turn:
+        steps = state.get("steps", 0)
+        if last.get("tool_calls") and steps <= config.max_steps_per_turn:
             return "tools"
         if state.get("pending"):
             return "approval"
+        at_front_desk = len(specs) > 1 and (state.get("agent") or entry) == entry
+        can_nudge = (
+            at_front_desk
+            and steps < config.max_steps_per_turn
+            and not state.get("error")
+            and not state.get("nudged")
+            and not state.get("handed_off")
+        )
+        if can_nudge and promises_handoff(str(last.get("content") or "")):
+            return "nudge"
         return "__end__"
 
     g = StateGraph(ConvState)
     g.add_node("agent", agent_node)
     g.add_node("tools", tools_node)
     g.add_node("approval", approval_node)
+    g.add_node("nudge", nudge_node)
     g.add_edge(START, "agent")
-    g.add_conditional_edges("agent", after_agent, {"tools": "tools", "approval": "approval", "__end__": END})
+    g.add_conditional_edges(
+        "agent", after_agent, {"tools": "tools", "approval": "approval", "nudge": "nudge", "__end__": END}
+    )
     g.add_edge("tools", "agent")
     g.add_edge("approval", "agent")
+    g.add_edge("nudge", "agent")
     return g.compile(checkpointer=checkpointer)

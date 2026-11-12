@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Yes, I'd like to set up a five‑month payment plan to cover the balance.###STOP###",
+ "usage": {
+  "input_tokens": 668,
+  "output_tokens": 60
+ },
+ "latency_ms": 376.7,
+ "cost_usd": 0.00013619999999999998
+}

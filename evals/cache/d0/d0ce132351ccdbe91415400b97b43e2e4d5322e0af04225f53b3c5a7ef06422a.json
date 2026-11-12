@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your identity has been verified. Your account number 101219 is active and associated with the address 591 Pearson Bypass, Northbrook. Could you please confirm if you'd like to check your current balance or need assistance with anything else?",
+ "usage": {
+  "input_tokens": 4039,
+  "output_tokens": 55
+ },
+ "latency_ms": 39298.1
+}

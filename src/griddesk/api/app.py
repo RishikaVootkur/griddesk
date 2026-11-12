@@ -36,7 +36,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sse_starlette.sse import EventSourceResponse
 
-from griddesk.agents.graph import AgentConfig
+from griddesk.agents.graph import AgentConfig, is_internal_note
 from griddesk.agents.runtime import ConversationRunner, TurnResult
 from griddesk.agents.toolbox import Toolbox
 from griddesk.config import REPO_ROOT, get_settings
@@ -412,7 +412,11 @@ def _new_agent_messages(new: list[dict[str, Any]], reply: str) -> list[dict[str,
 
 
 def _visible_count(msgs: list[dict[str, Any]]) -> int:
-    return sum(1 for x in msgs if x.get("role") in ("user", "assistant") and x.get("content"))
+    return sum(
+        1
+        for x in msgs
+        if x.get("role") in ("user", "assistant") and x.get("content") and not is_internal_note(x)
+    )
 
 
 @app.get("/api/conversations")
@@ -444,6 +448,8 @@ async def get_conversation(
     out = []
     for x in msgs:
         role, content = x.get("role"), x.get("content") or ""
+        if is_internal_note(x):
+            continue
         if role == "user":
             kind = "system" if content.startswith("RUNTIME NOTICE") else "customer"
             out.append({"role": kind, "text": content, "agent": None})

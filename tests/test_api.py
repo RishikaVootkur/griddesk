@@ -402,3 +402,25 @@ async def test_eval_endpoints_list_and_load_runs(tmp_path, monkeypatch):
             api.eval_run(name)
         assert e.value.status_code == 400
     assert (await client.get("/api/eval/runs/missing")).status_code == 404
+
+
+async def test_handoff_nudge_stays_out_of_the_customer_transcript(sessions):
+    st = await make_state(
+        sessions,
+        [
+            LLMResponse(model="x", content="Let me connect you with our account specialist."),
+            LLMResponse(
+                model="x",
+                tool_calls=[ToolCall(id="h", name="transfer_to_account", arguments={"reason": "paperless"})],
+            ),
+            LLMResponse(model="x", content="Happy to help. What is your account number?"),
+        ],
+    )
+    client = client_for(st)
+    conv, auth = await new_conversation(client)
+    url = f"/api/conversations/{conv}/messages"
+    await client.post(url, json={"text": "I want paperless billing"}, headers=auth)
+    detail = (await client.get(f"/api/conversations/{conv}", headers=auth)).json()
+    assert [x["role"] for x in detail["messages"]] == ["customer", "agent", "agent"]
+    assert not any("transfer_to_" in x["text"] for x in detail["messages"])
+    await st.toolbox.close()

@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I've verified your identity. The \"Grid Maintenance Fee\" is a charge for maintaining and upgrading the electrical grid to ensure reliable service. If you have any further questions or need clarification, feel free to ask!",
- "usage": {
-  "input_tokens": 4017,
-  "output_tokens": 43
- },
- "latency_ms": 36154.4
-}

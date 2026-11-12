@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Thank you, a 6‑month plan works for me. Goodbye.  \n###STOP###",
+ "usage": {
+  "input_tokens": 1066,
+  "output_tokens": 78
+ },
+ "latency_ms": 593.1,
+ "cost_usd": 0.00020669999999999998
+}

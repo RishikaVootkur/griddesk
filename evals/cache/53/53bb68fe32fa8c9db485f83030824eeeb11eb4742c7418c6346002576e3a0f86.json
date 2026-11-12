@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I've processed your payment of $64.20. Your account is now up to date, and there are no outstanding balances. If you have any other questions or need further assistance, feel free to ask!",
+ "usage": {
+  "input_tokens": 4831,
+  "output_tokens": 45
+ },
+ "latency_ms": 45615.3
+}

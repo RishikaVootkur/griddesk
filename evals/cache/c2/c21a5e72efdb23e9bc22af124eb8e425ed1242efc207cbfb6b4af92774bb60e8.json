@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "You're welcome! The credit for the outage has been applied to your account. If you have any more questions or need further assistance, feel free to ask. Have a great day!",
+ "usage": {
+  "input_tokens": 4439,
+  "output_tokens": 38
+ },
+ "latency_ms": 36208.5
+}

@@ -1,0 +1,18 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_crt25btm",
+   "name": "verify_identity",
+   "arguments": {
+    "account_id": "102738",
+    "last_name": "Andrews"
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 3748,
+  "output_tokens": 34
+ },
+ "latency_ms": 10255.7
+}

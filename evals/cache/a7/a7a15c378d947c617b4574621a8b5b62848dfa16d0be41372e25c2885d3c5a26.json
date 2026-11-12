@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "The minimum balance requirement for a payment plan is $100.00 because payment plans are designed to help customers manage larger balances. Since your current balance is $64.20, which is below this threshold, we cannot set up a payment plan at this time. Would you like to pay the balance in full, or is there anything else I can assist you with?",
+ "usage": {
+  "input_tokens": 4720,
+  "output_tokens": 79
+ },
+ "latency_ms": 60034.5
+}

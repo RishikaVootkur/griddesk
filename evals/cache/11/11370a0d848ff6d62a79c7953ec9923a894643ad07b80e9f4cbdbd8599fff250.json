@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Okay, thank you. I’m hoping we can sort out the late fee on this bill. It’s really stressing me out.",
+ "usage": {
+  "input_tokens": 558,
+  "output_tokens": 39
+ },
+ "latency_ms": 620.7,
+ "cost_usd": 0.00010709999999999999
+}

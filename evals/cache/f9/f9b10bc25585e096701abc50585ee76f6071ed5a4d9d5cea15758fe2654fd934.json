@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your 5-month payment plan is set up, and your service will remain active as long as you make each monthly payment on time. The first payment is due within 5 business days, and the final payment is due by the end of the 5-month period, which will be on or before **October 20, 2026**. \n\nIf you have any questions or need further assistance, feel free to ask. Have a great day!",
+ "usage": {
+  "input_tokens": 4605,
+  "output_tokens": 95
+ },
+ "latency_ms": 36878.5
+}

@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "That works, thank you. Goodbye. \n###STOP###",
+ "usage": {
+  "input_tokens": 814,
+  "output_tokens": 31
+ },
+ "latency_ms": 458.9,
+ "cost_usd": 0.00014069999999999998
+}

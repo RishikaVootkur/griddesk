@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your current balance is $64.20, and you don't have any past-due amount. Since you're looking to split this into three monthly payments, I can set up a payment plan for you. Would you like to proceed with that?",
+ "usage": {
+  "input_tokens": 4150,
+  "output_tokens": 53
+ },
+ "latency_ms": 21933.3
+}

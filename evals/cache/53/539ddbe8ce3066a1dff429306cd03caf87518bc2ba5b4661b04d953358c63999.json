@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "The street address on file for your account is 24 Lewis Cove, Fairhaven Heights. Could you confirm if this is the correct address? If so, I can proceed with checking your meter reading.",
- "usage": {
-  "input_tokens": 4173,
-  "output_tokens": 42
- },
- "latency_ms": 32230.5
-}

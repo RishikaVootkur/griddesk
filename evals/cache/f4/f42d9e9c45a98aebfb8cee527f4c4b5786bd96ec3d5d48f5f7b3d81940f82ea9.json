@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "You're welcome! A technician will visit your address at 10:00 AM on Tuesday to check the meter. They'll ensure the reading is accurate and update your bill if necessary. If you have any more questions, feel free to ask. Have a great day!",
+ "usage": {
+  "input_tokens": 4198,
+  "output_tokens": 57
+ },
+ "latency_ms": 31762.2
+}
