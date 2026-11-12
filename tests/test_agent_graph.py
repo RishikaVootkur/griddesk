@@ -408,6 +408,14 @@ async def test_specialist_reply_is_never_nudged(sessions):
         ("Let me connect you with our account specialist.", True),
         ("I'm transferring you to the billing team now.", True),
         ("I am routing you to an outages representative.", True),
+        ("I will transfer you to billing.", True),
+        ("Let me connect you with our outages desk.", True),
+        ("I will put you through to our account specialist.", True),
+        ("One moment while I transfer you.", True),
+        ("Let me get you to our billing specialist.", True),
+        ("I can connect you to an agent.", True),
+        ("I'll put you down for paperless billing on your account.", False),
+        ("We will transfer your service; our team will call you.", False),
         ("We will send you a paper bill for your account.", False),
         ("I can put you on a payment plan for this account.", False),
         ("I will send you a confirmation of your outage report.", False),
@@ -419,7 +427,7 @@ def test_promises_handoff_phrases(text, expected):
 
 
 def test_nudge_note_is_internal():
-    note = {"role": "user", "content": RUNTIME_NOTICE + NUDGE_NOTE}
+    note = {"role": "user", "content": RUNTIME_NOTICE + NUDGE_NOTE, "internal": True}
     approval = {"role": "user", "content": RUNTIME_NOTICE + "A supervisor denied request A-1."}
     assert is_internal_note(note)
     assert not is_internal_note(approval)

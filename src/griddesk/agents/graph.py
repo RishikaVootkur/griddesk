@@ -35,9 +35,16 @@ _NOTICE_LOOKALIKE = re.compile(r"runtime\s*notice", re.IGNORECASE)
 # customer with nobody. Error analysis found this on paperless and hazard tasks in the multi-agent design.
 # Only the front desk is checked, and only for a transfer verb aimed at the customer followed by a person
 # or team, so "we will send you a paper bill for your account" never matches.
+_HANDOFF_VERB = (
+    r"\b(connect(ing)?|transfer(ring)?|hand(ing)?|pass(ing)?|rout(e|ing)|put(ting)?|get(ting)?)\s+you\b"
+)
 _PROMISED_HANDOFF = re.compile(
-    r"\b(connect(ing)?|transfer(ring)?|hand(ing)?|pass(ing)?|rout(e|ing))\s+you\b"
-    r"[^.!?]{0,60}\b(specialists?|team|department|colleagues?|representative)\b",
+    # "connect you with our account specialist", "transferring you to the billing team"
+    rf"{_HANDOFF_VERB}[^.!?]{{0,60}}\b(specialists?|team|department|desk|colleagues?|representative|agent)\b"
+    # "transfer you to billing", "put you through to outages": the destination right after the verb
+    rf"|{_HANDOFF_VERB}\s+(through\s+|over\s+)?(to|with)\s+(our\s+|the\s+)?(billing|outages?|account)\b"
+    # "one moment while I transfer you."
+    r"|\btransfer(ring)?\s+you\s*[.!]",
     re.IGNORECASE,
 )
 NUDGE_NOTE = (
@@ -53,7 +60,7 @@ def promises_handoff(text: str) -> bool:
 
 def is_internal_note(message: dict[str, Any]) -> bool:
     """The handoff nudge coaches the agent; it is never shown to the customer."""
-    return message.get("role") == "user" and message.get("content") == RUNTIME_NOTICE + NUDGE_NOTE
+    return bool(message.get("internal"))
 
 
 def neutralize_customer_text(text: str) -> str:
@@ -217,7 +224,8 @@ def build_graph(
         }
 
     def nudge_node(state: ConvState) -> dict[str, Any]:
-        return {"messages": [{"role": "user", "content": RUNTIME_NOTICE + NUDGE_NOTE}], "nudged": True}
+        note = {"role": "user", "content": RUNTIME_NOTICE + NUDGE_NOTE, "internal": True}
+        return {"messages": [note], "nudged": True}
 
     def after_agent(state: ConvState) -> Literal["tools", "approval", "nudge", "__end__"]:
         last = state["messages"][-1]
