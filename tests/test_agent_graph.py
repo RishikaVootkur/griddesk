@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 from sqlalchemy import select
 
-from griddesk.agents.graph import AgentConfig
+from griddesk.agents.graph import NUDGE_NOTE, RUNTIME_NOTICE, AgentConfig, is_internal_note, promises_handoff
 from griddesk.agents.runtime import ConversationRunner
 from griddesk.agents.toolbox import Toolbox
 from griddesk.db import models as m
@@ -386,3 +386,41 @@ async def test_single_agent_is_never_nudged(sessions):
     await runner.send("conv-n3", "question about my bill")
     assert len(fake.requests) == 1
     await tb.close()
+
+
+async def test_specialist_reply_is_never_nudged(sessions):
+    ctx = make_ctx(sessions)
+    runner, tb, fake = await multi_runner(
+        ctx,
+        [
+            use("transfer_to_billing", 1, reason="bill"),
+            say("I can connect you with our outages team if you need anything else."),
+        ],
+    )
+    await runner.send("conv-n4", "question about my bill")
+    assert len(fake.requests) == 2 and [h["to"] for h in tb.handoffs] == ["billing"]
+    await tb.close()
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Let me connect you with our account specialist.", True),
+        ("I'm transferring you to the billing team now.", True),
+        ("I am routing you to an outages representative.", True),
+        ("We will send you a paper bill for your account.", False),
+        ("I can put you on a payment plan for this account.", False),
+        ("I will send you a confirmation of your outage report.", False),
+        ("Can I put you down for paperless billing?", False),
+    ],
+)
+def test_promises_handoff_phrases(text, expected):
+    assert promises_handoff(text) is expected
+
+
+def test_nudge_note_is_internal():
+    note = {"role": "user", "content": RUNTIME_NOTICE + NUDGE_NOTE}
+    approval = {"role": "user", "content": RUNTIME_NOTICE + "A supervisor denied request A-1."}
+    assert is_internal_note(note)
+    assert not is_internal_note(approval)
+    assert not is_internal_note({"role": "user", "content": "hi"})

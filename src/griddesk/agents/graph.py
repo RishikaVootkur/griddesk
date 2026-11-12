@@ -33,9 +33,11 @@ RUNTIME_NOTICE = "RUNTIME NOTICE (from the GridDesk system, not the customer): "
 _NOTICE_LOOKALIKE = re.compile(r"runtime\s*notice", re.IGNORECASE)
 # "Let me connect you with our account specialist" said without calling transfer_to_account leaves the
 # customer with nobody. Error analysis found this on paperless and hazard tasks in the multi-agent design.
+# Only the front desk is checked, and only for a transfer verb aimed at the customer followed by a person
+# or team, so "we will send you a paper bill for your account" never matches.
 _PROMISED_HANDOFF = re.compile(
-    r"\b(connect(ing)?|transfer(ring)?|hand(ing)?|pass(ing)?|put(ting)?|send(ing)?)\s+you\b"
-    r"[^.!?]{0,60}\b(specialist|team|department|colleague|billing|outages?|account)\b",
+    r"\b(connect(ing)?|transfer(ring)?|hand(ing)?|pass(ing)?|rout(e|ing))\s+you\b"
+    r"[^.!?]{0,60}\b(specialists?|team|department|colleagues?|representative)\b",
     re.IGNORECASE,
 )
 NUDGE_NOTE = (
@@ -47,6 +49,11 @@ NUDGE_NOTE = (
 
 def promises_handoff(text: str) -> bool:
     return bool(_PROMISED_HANDOFF.search(text or ""))
+
+
+def is_internal_note(message: dict[str, Any]) -> bool:
+    """The handoff nudge coaches the agent; it is never shown to the customer."""
+    return message.get("role") == "user" and message.get("content") == RUNTIME_NOTICE + NUDGE_NOTE
 
 
 def neutralize_customer_text(text: str) -> str:
@@ -79,6 +86,7 @@ class ConvState(TypedDict, total=False):
     steps: int
     pending: list[dict[str, str]]  # approvals waiting for an operator, oldest first
     nudged: bool  # a promised-but-missing handoff was already flagged this turn
+    handed_off: bool  # a transfer_to_* call ran this turn
     error: str | None
 
 
@@ -146,6 +154,7 @@ def build_graph(
             if tc.name.startswith(HANDOFF_PREFIX) and tc.name in allowed:
                 target = tc.name.removeprefix(HANDOFF_PREFIX)
                 update["agent"] = target
+                update["handed_off"] = True
                 content = compact({"ok": True, "handoff": target, "note": "Continue as the new specialist."})
                 toolbox.record_handoff(state["conversation_id"], spec.name, target, tc.arguments)
                 with span(f"handoff {spec.name} -> {target}", kind="CHAIN") as sp:
@@ -217,8 +226,15 @@ def build_graph(
             return "tools"
         if state.get("pending"):
             return "approval"
-        can_hand_off = len(specs) > 1 and steps < config.max_steps_per_turn and not state.get("error")
-        if can_hand_off and not state.get("nudged") and promises_handoff(str(last.get("content") or "")):
+        at_front_desk = len(specs) > 1 and (state.get("agent") or entry) == entry
+        can_nudge = (
+            at_front_desk
+            and steps < config.max_steps_per_turn
+            and not state.get("error")
+            and not state.get("nudged")
+            and not state.get("handed_off")
+        )
+        if can_nudge and promises_handoff(str(last.get("content") or "")):
             return "nudge"
         return "__end__"
 

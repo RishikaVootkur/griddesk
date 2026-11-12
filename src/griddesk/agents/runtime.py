@@ -141,6 +141,7 @@ class ConversationRunner:
                 "messages": [{"role": "user", "content": neutralize_customer_text(text)}],
                 "steps": 0,
                 "nudged": False,
+                "handed_off": False,
                 "error": None,
             },
             self._cfg(conversation_id),
