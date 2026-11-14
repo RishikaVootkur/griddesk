@@ -3,6 +3,7 @@
 import asyncio
 import json
 from datetime import date
+from pathlib import Path
 
 import httpx
 import pytest
@@ -424,3 +425,11 @@ async def test_handoff_nudge_stays_out_of_the_customer_transcript(sessions):
     assert [x["role"] for x in detail["messages"]] == ["customer", "agent", "agent"]
     assert not any("transfer_to_" in x["text"] for x in detail["messages"])
     await st.toolbox.close()
+
+
+def test_run_summary_reports_policy_off_when_defenses_are_off():
+    base = {"model": "m", "design": "multi", "enforce_policy": True, "trials": 1, "label": "x"}
+    run = {"created_at": "2026-11-04T00:00:00+00:00", "summary": {}}
+    off = api.run_summary(Path("x.json"), {**run, "config": {**base, "defenses": {"in_tool_policy": False}}})
+    on = api.run_summary(Path("x.json"), {**run, "config": base})
+    assert off["enforce_policy"] is False and on["enforce_policy"] is True

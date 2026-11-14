@@ -1,0 +1,190 @@
+{
+ "failed": 11,
+ "trials": 30,
+ "counts": {
+  "simulator_error": 0,
+  "infra_error": 0,
+  "policy_breach": 0,
+  "skipped_verification": 1,
+  "gave_up_early": 0,
+  "wrong_tool": 10,
+  "wrong_arguments": 0,
+  "missing_output": 0,
+  "approval_or_escalation": 0
+ },
+ "examples": {
+  "skipped_verification": [
+   {
+    "trial": "core30-qwen3-8b-single-k1:accounts-start-02:t0",
+    "title": "Existing customer adds service at a second home",
+    "transcript": [
+     {
+      "speaker": "agent",
+      "text": "To set up electric service for your new cottage, I'll need some details. Could you please provide your account number, the street address of the cottage, and the unit number if it's an apartment? Also, let me know if there's any existing service or if you're moving from another address."
+     },
+     {
+      "speaker": "customer",
+      "text": "Account number 100621. The cottage address is 268 Crawford Crescent, Millbrook, MA 01904. No existing service there; I just need new service starting 2026-11-09."
+     },
+     {
+      "speaker": "agent",
+      "text": "To verify your identity and proceed with setting up electric service for your cottage, I'll need to confirm your details. Could you please provide your last name and date of birth or the last four digits of your Social Security Number?"
+     },
+     {
+      "speaker": "customer",
+      "text": "Last four of my SSN are 5986.We can set up service at your cottage starting November 9, 2026, without affecting your existing account. I'll process the request now.Thanks, that works for me. Goodbye."
+     },
+     {
+      "speaker": "agent",
+      "text": "I'm sorry, but I cannot proceed without verifying your identity. To set up electric service for your cottage, I'll need to confirm your details. Could you please provide your last name and date of birth or the last four digits of your Social Security Number?"
+     },
+     {
+      "speaker": "customer",
+      "text": "Last four of my SSN are 5986."
+     }
+    ],
+    "mismatch": {
+     "accounts": {
+      "unexpected": [],
+      "missing": [
+       {
+        "id": "972489",
+        "customer_id": "C-00121",
+        "service_address_id": "SA-00055",
+        "status": "pending_start",
+        "balance": "0.00",
+        "autopay": "False",
+        "paperless": "False",
+        "closed_on": ""
+       }
+      ]
+     },
+     "service_orders": {
+      "unexpected": [],
+      "missing": [
+       {
+        "account_id": "972489",
+        "kind": "start",
+        "requested_on": "2026-11-09",
+        "status": "scheduled",
+        "new_service_address_id": ""
+       }
+      ]
+     }
+    },
+    "calls": [
+     [
+      "lookup_address",
+      "P-01"
+     ]
+    ]
+   }
+  ],
+  "wrong_tool": [
+   {
+    "trial": "core30-qwen3-8b-single-k1:accounts-phone-02:t0",
+    "title": "Update the phone number",
+    "transcript": [
+     {
+      "speaker": "customer",
+      "text": "I need to update the phone number on my account."
+     },
+     {
+      "speaker": "agent",
+      "text": "To update your phone number, I'll need to verify your identity. Please provide your account number, last name, and either your date of birth or the last four digits of your Social Security Number."
+     },
+     {
+      "speaker": "customer",
+      "text": "Account number 100258, last four of SSN 3769.My new mobile number is <PHONE>."
+     }
+    ],
+    "mismatch": {
+     "customers": {
+      "unexpected": [],
+      "missing": [
+       {
+        "id": "C-00048",
+        "email": "robinmorris2@examplecom",
+        "phone": "(978) 555-0163",
+        "mailing_address": "",
+        "preferred_contact": "email"
+       }
+      ]
+     }
+    },
+    "calls": []
+   },
+   {
+    "trial": "core30-qwen3-8b-single-k1:billing-dispute-01:t0",
+    "title": "Formal dispute of a bill",
+    "transcript": [
+     {
+      "speaker": "agent",
+      "text": "I need to verify your identity before I can open the dispute. Could you please provide the last four digits of your Social Security Number?"
+     },
+     {
+      "speaker": "customer",
+      "text": "I don\u2019t have that information."
+     },
+     {
+      "speaker": "agent",
+      "text": "I understand. Since I can't verify your identity with the information provided, I'll need to escalate this to a specialist. A customer service representative will contact you to resolve this issue. Thank you for your patience."
+     },
+     {
+      "speaker": "customer",
+      "text": "OK, I\u2019ll wait."
+     },
+     {
+      "speaker": "agent",
+      "text": "You're all set. A customer service representative will reach out to you shortly to assist with your dispute. Thank you for your patience!"
+     },
+     {
+      "speaker": "customer",
+      "text": "Thanks, goodbye."
+     }
+    ],
+    "mismatch": {
+     "bills": {
+      "unexpected": [],
+      "missing": [
+       {
+        "id": "B-102720-2610",
+        "status": "disputed"
+       }
+      ]
+     },
+     "escalations": {
+      "unexpected": [],
+      "missing": [
+       {
+        "category": "billing_dispute"
+       }
+      ]
+     }
+    },
+    "calls": [
+     [
+      "verify_identity",
+      null
+     ],
+     [
+      "get_account_summary",
+      "P-01"
+     ],
+     [
+      "escalate_to_human",
+      "P-01"
+     ],
+     [
+      "verify_identity",
+      null
+     ],
+     [
+      "dispute_bill",
+      "P-01"
+     ]
+    ]
+   }
+  ]
+ }
+}

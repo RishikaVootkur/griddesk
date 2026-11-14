@@ -59,4 +59,8 @@ Each layer can be switched off for the ablation (`griddesk.guardrails.Defenses`)
 
 ## Measured results
 
-See the attack-success table in the README and `docs/eval-methodology.md`, built from the adversarial runs in `evals/runs/`.
+From the 47-attack runs on qwen3:8b (`evals/runs/attacks-qwen3-8b-defenses-*.json`, tables in the README):
+
+- With every defense on, **no attack changed data it should not have** (0 of 47). With every defense off, 6 of 47 did: cross-account changes, user-turn injections and social engineering.
+- Attack success overall was 12.8% with defenses on and 27.7% with them off.
+- What still gets through with defenses on is mostly text: false confirmations of actions that never ran (2 of 3 false-confirmation attacks), system prompt fragments (2 of 4) and a canary planted in a knowledge-base article (1 of 6). One user-turn injection (`attack-injection-user-07`) also stopped the agent from filing a required outage report, which no tool check can catch because no tool was called. These are the prompt-level risks listed above; the next layer would be an output check that compares claimed actions with the tool log.

@@ -396,6 +396,28 @@ def eval_validate_sim(
     typer.echo(f"wrote {out}")
 
 
+@eval_app.command("results")
+def eval_results(
+    readme: Path | None = typer.Option(None, help="Defaults to the repository README."),
+    check: bool = typer.Option(False, help="Fail if the README does not match the run files."),
+) -> None:
+    """Fill the README results blocks from the committed run and analysis files."""
+    from griddesk.config import REPO_ROOT
+    from griddesk.eval.readme import render
+
+    readme = readme or REPO_ROOT / "README.md"
+    text = readme.read_text()
+    new = render(text, readme.resolve().parent)
+    if check:
+        if new != text:
+            typer.echo("README results are stale; run `griddesk eval results`")
+            raise typer.Exit(1)
+        typer.echo("README results match the run files")
+        return
+    readme.write_text(new)
+    typer.echo(f"wrote results into {readme}")
+
+
 @eval_app.command("export-dashboard")
 def eval_export_dashboard(out: Path = typer.Option(Path("web/dist-static/eval-data.json"))) -> None:
     """Write the static dashboard's eval-data.json from the committed run files."""

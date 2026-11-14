@@ -19,6 +19,9 @@ export function RunDetail({ name }: { name: string }) {
   if (!run || loading) return <Card><Spinner label="Loading run" /></Card>;
 
   const c = run.config;
+  // Mirrors the runner: in-tool policy is on only if enforce_policy and the in_tool_policy defense are both on.
+  const policyOn = c.enforce_policy && (c.defenses?.in_tool_policy ?? true);
+  const defensesOff = c.defenses ? Object.entries(c.defenses).filter(([, on]) => !on).map(([k]) => k) : [];
   return (
     <div className="flex flex-col gap-6">
       <Card>
@@ -28,7 +31,8 @@ export function RunDetail({ name }: { name: string }) {
             <Pill tone="info">agent: {c.model}</Pill>
             <Pill>simulator: {c.sim_model}</Pill>
             <Pill>design: {c.design}</Pill>
-            <Pill tone={c.enforce_policy ? "good" : "warn"}>{c.enforce_policy ? "in-tool policy on" : "in-tool policy off"}</Pill>
+            <Pill tone={policyOn ? "good" : "warn"}>{policyOn ? "in-tool policy on" : "in-tool policy off"}</Pill>
+            {defensesOff.length > 0 && <Pill tone="warn">defenses off: {defensesOff.join(", ").replaceAll("_", " ")}</Pill>}
             <Pill>
               {run.summary.tasks ?? Object.keys(run.tasks).length} tasks x {c.trials} trial{c.trials === 1 ? "" : "s"}
             </Pill>

@@ -556,7 +556,8 @@ def run_summary(path: Path, run: dict[str, Any]) -> dict[str, Any]:
         "label": c.get("label") or path.stem,
         "model": c["model"],
         "design": c["design"],
-        "enforce_policy": c["enforce_policy"],
+        # The runner enforces only when both are on (`--defenses none` turns off in_tool_policy).
+        "enforce_policy": bool(c["enforce_policy"] and (c.get("defenses") or {}).get("in_tool_policy", True)),
         "trials": c["trials"],
         "created_at": run["created_at"],
         "summary": run["summary"],

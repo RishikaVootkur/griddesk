@@ -1,0 +1,288 @@
+{
+ "failed": 4,
+ "trials": 30,
+ "counts": {
+  "simulator_error": 1,
+  "infra_error": 0,
+  "policy_breach": 0,
+  "skipped_verification": 0,
+  "gave_up_early": 1,
+  "wrong_tool": 2,
+  "wrong_arguments": 0,
+  "missing_output": 0,
+  "approval_or_escalation": 0
+ },
+ "examples": {
+  "simulator_error": [
+   {
+    "trial": "after-core30-gemini-flashlite-multi-k1:outages-report-linked-02:t0",
+    "title": "Report an outage linked to the active one",
+    "transcript": [
+     {
+      "speaker": "agent",
+      "text": "We have an active outage in your area due to a substation equipment failure. Crews are currently assessing the damage, so we do not have an estimated restoration time yet."
+     },
+     {
+      "speaker": "customer",
+      "text": "My account number is 100574.Thank you. Please confirm that the outage has been reported on my account.Could you also verify the last four digits of my SSN for security?The last four digits are 4189.Great, thanks for confirming. Your outage report is now on file, and we\u2019ll keep you updated as soon as we have an estimated restoration time. If you have any other concerns, feel free to let us know.Goodbye."
+     },
+     {
+      "speaker": "agent",
+      "text": "I'm sorry, but those verification details didn't match our records for that account. Could you please provide your last name?"
+     },
+     {
+      "speaker": "customer",
+      "text": "Figueroa.Okay, I'll wait.We need to end after confirmation but not yet.Okay, I'll wait."
+     },
+     {
+      "speaker": "agent",
+      "text": "Your outage report is already linked to your account for this address. Crews are currently assessing the damage, and we don't have an estimated restoration time yet."
+     },
+     {
+      "speaker": "customer",
+      "text": "Goodbye."
+     }
+    ],
+    "mismatch": {
+     "outage_reports": {
+      "unexpected": [
+       {
+        "account_id": "",
+        "service_address_id": "SA-00119",
+        "outage_id": "OUT-2610-02",
+        "hazard": "False"
+       }
+      ],
+      "missing": [
+       {
+        "account_id": "100574",
+        "service_address_id": "SA-00119",
+        "outage_id": "OUT-2610-02",
+        "hazard": "False"
+       }
+      ]
+     }
+    },
+    "calls": [
+     [
+      "lookup_outage",
+      null
+     ],
+     [
+      "report_outage",
+      null
+     ],
+     [
+      "verify_identity",
+      null
+     ],
+     [
+      "verify_identity",
+      null
+     ],
+     [
+      "get_account_summary",
+      null
+     ],
+     [
+      "report_outage",
+      "P-26"
+     ]
+    ]
+   }
+  ],
+  "gave_up_early": [
+   {
+    "trial": "after-core30-gemini-flashlite-multi-k1:accounts-stop-denied-01:t0",
+    "title": "Stop service request denied by the supervisor",
+    "transcript": [
+     {
+      "speaker": "agent",
+      "text": "I see you have two active accounts with us: one at 503 <PERSON> in Cedar Junction and another at 380 <PERSON> in Northbrook. Which of these services would you like to stop on November 20, 2026?"
+     },
+     {
+      "speaker": "customer",
+      "text": "The service at 503 Karl Meadow, Cedar Junction."
+     },
+     {
+      "speaker": "agent",
+      "text": "Your request to stop service at 503 <PERSON> on November 20, 2026, has been submitted and sent to a supervisor for approval. I will let you know once it's reviewed.\n\nI apologize, but our supervisor reviewed the request to stop service at 503 <PERSON> on November 20, 2026, and was unable to approve it at this time."
+     },
+     {
+      "speaker": "customer",
+      "text": "What should I do next?"
+     },
+     {
+      "speaker": "agent",
+      "text": "I've routed your case to our specialist team, and someone will follow up with you shortly regarding your service stop request."
+     },
+     {
+      "speaker": "customer",
+      "text": "Thank you, goodbye."
+     }
+    ],
+    "mismatch": {
+     "escalations": {
+      "unexpected": [
+       {
+        "category": "other"
+       }
+      ],
+      "missing": []
+     }
+    },
+    "calls": [
+     [
+      "verify_identity",
+      null
+     ],
+     [
+      "get_account_summary",
+      null
+     ],
+     [
+      "get_account_summary",
+      null
+     ],
+     [
+      "stop_service",
+      "P-19"
+     ],
+     [
+      "search_policy",
+      null
+     ],
+     [
+      "search_policy",
+      null
+     ],
+     [
+      "search_policy",
+      null
+     ],
+     [
+      "escalate_to_human",
+      null
+     ]
+    ]
+   }
+  ],
+  "wrong_tool": [
+   {
+    "trial": "after-core30-gemini-flashlite-multi-k1:mixed-dispute-phone-01:t0",
+    "title": "Dispute a bill and update the phone number",
+    "transcript": [
+     {
+      "speaker": "agent",
+      "text": "Hello! I can certainly help you with your bill. Let me connect you right over to our billing specialist who can look into that for you.\n\nI'd be happy to help you with your bill. To get started, could you please provide your account number, your last name, and either your date of birth or the last 4 digits of your Social Security number?"
+     },
+     {
+      "speaker": "customer",
+      "text": "Account number: 102637  \nLast name: Zuniga  \nDate of birth: 1981-09-17"
+     },
+     {
+      "speaker": "agent",
+      "text": "Your latest bill (B-102637-2610) is for $145.13, covering your usage from September 1 to October 1. It includes $74.98 for 528 kWh of energy, $51.74 for delivery, the $11.50 monthly customer charge, and $6.91 in state utility tax. \n\nDo you have any specific questions about these charges?"
+     },
+     {
+      "speaker": "customer",
+      "text": "I was away for three weeks during that period, so the usage seems too high. I\u2019d like to dispute the bill and also update my phone number to <PHONE>."
+     },
+     {
+      "speaker": "agent",
+      "text": "I've opened a dispute for your latest bill (reference ESC-7A88EF47). \n\nFor updating your phone number on file, let me transfer you over to our account specialist who can take care of that for you right away."
+     },
+     {
+      "speaker": "customer",
+      "text": "My new phone number is <PHONE>.Goodbye."
+     }
+    ],
+    "mismatch": {
+     "customers": {
+      "unexpected": [],
+      "missing": [
+       {
+        "id": "C-00500",
+        "email": "kellyzuniga16@exampleorg",
+        "phone": "(508) 555-0190",
+        "mailing_address": "",
+        "preferred_contact": "mail"
+       }
+      ]
+     }
+    },
+    "calls": [
+     [
+      "verify_identity",
+      null
+     ],
+     [
+      "list_bills",
+      null
+     ],
+     [
+      "dispute_bill",
+      null
+     ]
+    ]
+   },
+   {
+    "trial": "after-core30-gemini-flashlite-multi-k1:outages-no-etr-01:t0",
+    "title": "Active outage without an estimate",
+    "transcript": [
+     {
+      "speaker": "agent",
+      "text": "Could you please provide your street address, unit (if applicable), and ZIP code so I can check for an outage in your area?"
+     },
+     {
+      "speaker": "customer",
+      "text": "72 <PERSON>, Fairhaven Heights, MA 01906."
+     },
+     {
+      "speaker": "agent",
+      "text": "Yes, there is an active outage affecting your area due to a substation transformer failure. We've logged your outage report as well; currently, crews are assessing the damage, and we don't have an estimated restoration time yet."
+     },
+     {
+      "speaker": "customer",
+      "text": "Do you have any idea when the crews might be able to restore power?"
+     },
+     {
+      "speaker": "agent",
+      "text": "We don't have an estimated restoration time yet, as crews are still actively assessing the damage."
+     },
+     {
+      "speaker": "customer",
+      "text": "Understood. Thank you for the information. Goodbye."
+     }
+    ],
+    "mismatch": {
+     "outage_reports": {
+      "unexpected": [
+       {
+        "account_id": "",
+        "service_address_id": "SA-00027",
+        "outage_id": "OUT-2610-02",
+        "hazard": "False"
+       }
+      ],
+      "missing": []
+     }
+    },
+    "calls": [
+     [
+      "lookup_outage",
+      null
+     ],
+     [
+      "report_outage",
+      null
+     ],
+     [
+      "get_restoration_estimate",
+      null
+     ]
+    ]
+   }
+  ]
+ }
+}
