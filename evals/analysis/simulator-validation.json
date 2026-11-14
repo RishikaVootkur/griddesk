@@ -1,0 +1,314 @@
+{
+ "judge_model": "groq:qwen/qwen3.8-27b",
+ "sampling": "stratified: up to 15 failed trials, rest passed, round-robin, seed 7",
+ "sampled": 30,
+ "judged": 30,
+ "broke_task_rate": 0.2,
+ "broke_task_rate_on_failed": 0.3333333333333333,
+ "followed_goal_rate": 0.8333333333333334,
+ "invented_facts_rate": 0.0,
+ "ended_prematurely_rate": 0.06666666666666667,
+ "broke_character_rate": 0.16666666666666666,
+ "verdicts": {
+  "core30-gemini-flashlite-multi-k1:accounts-phone-02:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer provided the requested verification details directly and concisely, consistent with the persona and goal.",
+   "run": "core30-gemini-flashlite-multi-k1",
+   "trial_passed": false
+  },
+  "core30-groq-qwen38-multi-k1:billing-dispute-01:t0": {
+   "followed_goal": false,
+   "invented_facts": false,
+   "ended_prematurely": true,
+   "broke_character": false,
+   "broke_task": true,
+   "note": "The customer hallucinated that the dispute was opened and ended the chat before the agent could actually process the request.",
+   "run": "core30-groq-qwen38-multi-k1",
+   "trial_passed": false
+  },
+  "core30-qwen3-8b-multi-k4:mixed-readback-update-01:t2": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer successfully verified identity, requested the email change and paperless billing, and ended the call after confirmation.",
+   "run": "core30-qwen3-8b-multi-k4",
+   "trial_passed": false
+  },
+  "core30-qwen3-8b-single-k1:outages-credit-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer successfully pursued the goal of asking for compensation and accepting the credit, using only provided facts, despite a formatting error where multiple turns were concatenated into one message.",
+   "run": "core30-qwen3-8b-single-k1",
+   "trial_passed": false
+  },
+  "after-core30-gemini-flashlite-multi-k1:accounts-stop-denied-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer correctly identified the account, waited for the supervisor decision, asked for next steps upon rejection, and ended the chat as instructed.",
+   "run": "after-core30-gemini-flashlite-multi-k1",
+   "trial_passed": false
+  },
+  "after-core30-qwen3-8b-multi-k4:outages-credit-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer successfully pursued the hidden goal, used only allowed facts, and ended the chat after accepting the credit.",
+   "run": "after-core30-qwen3-8b-multi-k4",
+   "trial_passed": false
+  },
+  "core30-gemini-flashlite-multi-k1:accounts-paperless-on-01:t0": {
+   "followed_goal": false,
+   "invented_facts": false,
+   "ended_prematurely": true,
+   "broke_character": true,
+   "broke_task": true,
+   "note": "The customer used a placeholder name instead of the provided persona name and ended the chat before the agent could confirm the request.",
+   "run": "core30-gemini-flashlite-multi-k1",
+   "trial_passed": false
+  },
+  "core30-groq-qwen38-multi-k1:mixed-autopay-mailing-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": true,
+   "broke_task": true,
+   "note": "The customer leaked internal reasoning and system instructions in the final message, breaking character and compromising the evaluation.",
+   "run": "core30-groq-qwen38-multi-k1",
+   "trial_passed": false
+  },
+  "core30-qwen3-8b-multi-k4:mixed-readback-update-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": true,
+   "broke_task": true,
+   "note": "The customer broke character by speaking in the third person and mimicking the agent's confirmation language in the second-to-last turn.",
+   "run": "core30-qwen3-8b-multi-k4",
+   "trial_passed": false
+  },
+  "core30-qwen3-8b-single-k1:outages-hazard-03:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer provided the correct address, followed safety instructions, and ended the chat only after the agent confirmed the report was filed.",
+   "run": "core30-qwen3-8b-single-k1",
+   "trial_passed": false
+  },
+  "after-core30-gemini-flashlite-multi-k1:outages-report-linked-02:t0": {
+   "followed_goal": false,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": true,
+   "broke_task": true,
+   "note": "The customer leaked internal instructions ('We need to end after confirmation but not yet') and pasted agent-like text into their own message.",
+   "run": "after-core30-gemini-flashlite-multi-k1",
+   "trial_passed": false
+  },
+  "after-core30-qwen3-8b-multi-k4:accounts-new-customer-01:t1": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer correctly identified as a new applicant, asked for the required details when directed to apply online, and ended the chat as instructed.",
+   "run": "after-core30-qwen3-8b-multi-k4",
+   "trial_passed": false
+  },
+  "core30-gemini-flashlite-multi-k1:accounts-stop-denied-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer correctly provided verification details, asked for next steps after the denial, and ended the chat as instructed.",
+   "run": "core30-gemini-flashlite-multi-k1",
+   "trial_passed": false
+  },
+  "core30-groq-qwen38-multi-k1:accounts-autopay-off-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer correctly provided allowed facts, stayed in character, and ended the chat only after the agent failed to verify identity and offered no further help.",
+   "run": "core30-groq-qwen38-multi-k1",
+   "trial_passed": false
+  },
+  "core30-qwen3-8b-multi-k4:accounts-paperless-on-01:t1": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer successfully switched to paperless billing using allowed facts and ended the chat immediately after confirmation.",
+   "run": "core30-qwen3-8b-multi-k4",
+   "trial_passed": false
+  },
+  "core30-gemini-flashlite-multi-k1:accounts-autopay-on-refused-02:t0": {
+   "followed_goal": false,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer asked the agent to perform the enrollment twice, violating the instruction to ask only once before accepting and ending the chat.",
+   "run": "core30-gemini-flashlite-multi-k1",
+   "trial_passed": true
+  },
+  "core30-groq-qwen38-multi-k1:accounts-paperless-on-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer successfully requested paperless billing, provided valid verification details from the allowed facts, and ended the chat after confirmation.",
+   "run": "core30-groq-qwen38-multi-k1",
+   "trial_passed": true
+  },
+  "core30-qwen3-8b-multi-k4:outages-duplicate-02:t2": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer correctly provided the required details and persistently asked for status updates without inventing facts or breaking character.",
+   "run": "core30-qwen3-8b-multi-k4",
+   "trial_passed": true
+  },
+  "core30-qwen3-8b-single-k1:billing-plan-refused-default-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer politely requested the plan, asked once for an exception when refused, and ended the chat as instructed.",
+   "run": "core30-qwen3-8b-single-k1",
+   "trial_passed": true
+  },
+  "after-core30-gemini-flashlite-multi-k1:mixed-autopay-mailing-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer provided the required verification details from the allowed facts and ended the conversation only after the agent confirmed both requested changes.",
+   "run": "after-core30-gemini-flashlite-multi-k1",
+   "trial_passed": true
+  },
+  "after-core30-qwen3-8b-multi-k4:outages-none-01:t3": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer followed the hidden goal exactly, using only provided facts and maintaining the polite, concise persona.",
+   "run": "after-core30-qwen3-8b-multi-k4",
+   "trial_passed": true
+  },
+  "core30-gemini-flashlite-multi-k1:accounts-stop-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer correctly waited for the supervisor approval as instructed and ended the chat only after receiving confirmation that the stop was scheduled.",
+   "run": "core30-gemini-flashlite-multi-k1",
+   "trial_passed": true
+  },
+  "core30-groq-qwen38-multi-k1:outages-no-etr-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer asked about the outage, accepted the lack of a specific restoration time, and ended the conversation politely.",
+   "run": "core30-groq-qwen38-multi-k1",
+   "trial_passed": true
+  },
+  "core30-qwen3-8b-multi-k4:accounts-autopay-off-01:t1": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer successfully requested and confirmed the disabling of autopay, then ended the chat as instructed.",
+   "run": "core30-qwen3-8b-multi-k4",
+   "trial_passed": true
+  },
+  "core30-qwen3-8b-single-k1:accounts-email-invalid-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer successfully corrected the email address and ended the chat after confirmation, adhering to the persona and goal.",
+   "run": "core30-qwen3-8b-single-k1",
+   "trial_passed": true
+  },
+  "after-core30-gemini-flashlite-multi-k1:accounts-paperless-on-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer provided the required verification details from the allowed facts and ended the chat immediately after the agent confirmed the switch to paperless billing.",
+   "run": "after-core30-gemini-flashlite-multi-k1",
+   "trial_passed": true
+  },
+  "after-core30-qwen3-8b-multi-k4:accounts-email-unverified-01:t2": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer correctly identified the verification barrier, asked for the location of the account number as instructed, and maintained the impatient persona without inventing facts.",
+   "run": "after-core30-qwen3-8b-multi-k4",
+   "trial_passed": true
+  },
+  "core30-gemini-flashlite-multi-k1:accounts-email-unverified-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer correctly asked for the location of the account number and ended the chat as instructed when the agent indicated verification was required.",
+   "run": "core30-gemini-flashlite-multi-k1",
+   "trial_passed": true
+  },
+  "core30-groq-qwen38-multi-k1:accounts-stop-denied-01:t0": {
+   "followed_goal": true,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": false,
+   "broke_task": false,
+   "note": "The customer correctly provided verification details, waited for the supervisor decision, asked for next steps upon denial, and ended the chat as instructed.",
+   "run": "core30-groq-qwen38-multi-k1",
+   "trial_passed": true
+  },
+  "core30-qwen3-8b-multi-k4:accounts-readback-pressure-01:t0": {
+   "followed_goal": false,
+   "invented_facts": false,
+   "ended_prematurely": false,
+   "broke_character": true,
+   "broke_task": true,
+   "note": "The customer transcript contains a malformed turn where the agent's response is missing and the customer's turn includes the agent's reply, indicating a simulation error.",
+   "run": "core30-qwen3-8b-multi-k4",
+   "trial_passed": true
+  }
+ }
+}
