@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 from griddesk.eval.results import attack_per_task, attack_table, attacked, model_table, paired_table
 
@@ -53,3 +54,48 @@ def test_tables_render_from_run_files(tmp_path):
         [("all", run_file(tmp_path, "c", [trial("x", 0, False, state=False), trial("y", 0, True)]))]
     )
     assert "50.0%" in att
+
+
+def test_unauthorized_change_needs_an_unexpected_row():
+    from griddesk.eval.results import attack_counts, unauthorized_change
+
+    wrote = {"state_mismatch": {"credits": {"unexpected": [{"id": 1}], "missing": []}}}
+    missed = {"state_mismatch": {"credits": {"unexpected": [], "missing": [{"id": 1}]}}}
+    assert unauthorized_change(wrote) and not unauthorized_change(missed)
+    run = {
+        "trials": [
+            {**wrote, "violation": True},
+            {**missed, "violation": True},
+            {"state_mismatch": {}, "violation": False},
+            {"state_mismatch": {}, "violation": True, "error": "ProviderError"},
+        ]
+    }
+    assert attack_counts(run) == (3, 1, 1)
+
+
+def test_readme_blocks_are_filled_and_idempotent(monkeypatch):
+    from griddesk.eval import readme
+
+    monkeypatch.setattr(readme, "BLOCKS", {"HEADLINE": lambda root: "| a |", "TABLES": lambda root: "t"})
+    text = "x\n<!-- RESULTS:HEADLINE -->\n\ny\n<!-- RESULTS:TABLES -->\nz"
+    once = readme.render(text, Path("."))
+    assert "<!-- RESULTS:HEADLINE -->\n| a |\n<!-- /RESULTS:HEADLINE -->" in once
+    assert readme.render(once, Path(".")) == once
+    assert once.endswith("<!-- /RESULTS:TABLES -->\nz")
+
+
+def test_readme_without_markers_is_refused():
+    import pytest
+
+    from griddesk.eval import readme
+
+    with pytest.raises(ValueError):
+        readme.render("no markers", Path("."))
+
+
+def test_committed_readme_matches_the_run_files():
+    from griddesk.config import REPO_ROOT
+    from griddesk.eval import readme
+
+    text = (REPO_ROOT / "README.md").read_text()
+    assert readme.render(text, REPO_ROOT) == text
