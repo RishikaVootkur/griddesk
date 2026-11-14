@@ -146,6 +146,7 @@ export interface EvalRunDetail {
     sim_model: string;
     design: string;
     enforce_policy: boolean;
+    defenses?: Record<string, boolean>;
     trials: number;
     label: string;
     suite: string;
