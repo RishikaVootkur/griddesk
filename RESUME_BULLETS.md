@@ -1,0 +1,17 @@
+# Resume bullets
+
+Each bullet follows "accomplished X, as measured by Y, by doing Z". Every number links to the run or analysis file it comes from, and `uv run griddesk eval results --check` keeps the README tables in sync with the same files.
+
+- Built a multi-agent customer-operations agent for a simulated electric utility that committed **0 policy violations across 360 evaluated conversations**, by enforcing a 32-rule handbook inside the tools of four MCP servers on Postgres, with human approval for risky actions and Presidio PII redaction on every log and trace. Runs: [Gemini](evals/runs/core30-gemini-flashlite-multi-k1.json), [Groq](evals/runs/core30-groq-qwen38-multi-k1.json), [qwen3:8b x4](evals/runs/core30-qwen3-8b-multi-k4.json), [single agent](evals/runs/core30-qwen3-8b-single-k1.json), [Gemini after fixes](evals/runs/after-core30-gemini-flashlite-multi-k1.json), [qwen3:8b after fixes](evals/runs/after-core30-qwen3-8b-multi-k4.json).
+
+- Blocked **every unauthorized data change across 47 adversarial attacks (0 of 47, against 6 of 47 with defenses off)** and cut overall attack success from 27.7% to 12.8%, by layering in-tool policy checks, a pre-action guard, spotlighting and an injection filter, then measuring each configuration on the same attack suite. Runs: [defenses on](evals/runs/attacks-qwen3-8b-defenses-all.json), [defenses off](evals/runs/attacks-qwen3-8b-defenses-none.json).
+
+- Designed a tau-bench-style evaluation harness (86 tasks, 47 attacks, an LLM-simulated customer from a different model family) that scores success by **exact end-state database diffs** and reports pass^k reliability (36.7% at k=1 falling to 26.7% at k=4 on qwen3:8b), cluster-bootstrap confidence intervals and paired significance tests. Run: [qwen3:8b x4](evals/runs/core30-qwen3-8b-multi-k4.json).
+
+- Raised task success on Gemini 3.5 Flash-Lite **from 76.7% to 86.7% on the same 30 tasks** (paired p = 0.45, so a direction more than a proven gain at this sample size), by sorting every failed trial into an error taxonomy, which surfaced a front desk that promised transfers it never made, then adding a code-level handoff nudge and confirming with a paired test that the gain does not carry over to an 8B model. Runs: [before](evals/runs/core30-gemini-flashlite-multi-k1.json), [after](evals/runs/after-core30-gemini-flashlite-multi-k1.json), [qwen before](evals/runs/core30-qwen3-8b-multi-k4.json), [qwen after](evals/runs/after-core30-qwen3-8b-multi-k4.json).
+
+- Showed that a **single agent beats a triage-plus-specialists design by 26.7 points on a local 8B model (63.3% vs 36.7%, p = 0.001)**, by running both designs on the same tasks and simulator and tracing the gap to skipped handoffs (56 of 120 trials). Runs: [multi](evals/runs/core30-qwen3-8b-multi-k4.json), [single](evals/runs/core30-qwen3-8b-single-k1.json).
+
+- Validated the simulated customer with a cross-family LLM judge, which found it **broke the task in 20.0% of a 30-transcript stratified sample**, and separated those trials from agent failures in the error taxonomy. File: [simulator validation](evals/analysis/simulator-validation.json).
+
+- Kept the whole project at **$0** while comparing three models from three providers, by building an LLM gateway with fallback, retries, budgets, list-price cost accounting, waiting out rolling daily quotas, and a full-request response cache, which lets a CI regression gate replay recorded runs **with no API keys**. Gate: [baseline](evals/baselines/ci-gate.json), [workflow](.github/workflows/eval-gate.yml).
