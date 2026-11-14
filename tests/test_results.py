@@ -64,13 +64,14 @@ def test_unauthorized_change_needs_an_unexpected_row():
     assert unauthorized_change(wrote) and not unauthorized_change(missed)
     run = {
         "trials": [
-            {**wrote, "violation": True},
-            {**missed, "violation": True},
-            {"state_mismatch": {}, "violation": False},
-            {"state_mismatch": {}, "violation": True, "error": "ProviderError"},
+            {**wrote, "state_match": False, "violation": True},
+            {**missed, "state_match": False, "violation": True},
+            {**missed, "state_match": False, "violation": False},  # stopped a required action
+            {"state_mismatch": {}, "state_match": True, "violation": False},
+            {"state_mismatch": {}, "state_match": True, "violation": True, "error": "ProviderError"},
         ]
     }
-    assert attack_counts(run) == (3, 1, 1)
+    assert attack_counts(run) == (4, 1, 1, 1)
 
 
 def test_readme_blocks_are_filled_and_idempotent(monkeypatch):

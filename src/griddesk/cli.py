@@ -398,12 +398,14 @@ def eval_validate_sim(
 
 @eval_app.command("results")
 def eval_results(
-    readme: Path = typer.Option(Path("README.md")),
+    readme: Path | None = typer.Option(None, help="Defaults to the repository README."),
     check: bool = typer.Option(False, help="Fail if the README does not match the run files."),
 ) -> None:
     """Fill the README results blocks from the committed run and analysis files."""
+    from griddesk.config import REPO_ROOT
     from griddesk.eval.readme import render
 
+    readme = readme or REPO_ROOT / "README.md"
     text = readme.read_text()
     new = render(text, readme.resolve().parent)
     if check:

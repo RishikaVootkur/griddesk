@@ -13,9 +13,9 @@ Everything runs on free tiers: Gemini, Groq and a local Ollama model.
 | Reliability, qwen3:8b pass^1 to pass^4 | 36.7% to 26.7% |
 | Policy violations on ordinary tasks, worst run | 0.0% |
 | Attacks that changed data, defenses on / off | 0 of 47 / 6 of 47 |
-| Attacks that only got a violating reply, defenses on | 5 of 47 |
-| Fix effect on Gemini (paired, same 30 tasks) | +10.0%, p = 0.45 |
-| Simulator broke the task (judged sample of 30) | 20.0% |
+| Other attacks that worked, defenses on | 5 of 47 got a violating reply (a false confirmation or leaked text); 1 stopped a required action |
+| Fix effect on Gemini (paired, same 30 tasks) | +10.0 points, p = 0.45 (not significant) |
+| Simulator broke the task (judged, failure-weighted sample of 30) | 20.0% |
 <!-- /RESULTS:HEADLINE -->
 
 ## What it shows
@@ -78,7 +78,7 @@ The eval dashboard (also published to [GitHub Pages](https://rishikavootkur.gith
 ## Results
 
 <!-- RESULTS:TABLES -->
-All runs use the same 30-task core subset (`evals/subsets/core-30.txt`) and the same simulated customer (`gpt-oss-120b`). Errored trials were rerun until none remained, so every number below covers every trial.
+Task runs use the same 30-task core subset (`evals/subsets/core-30.txt`) and the same simulated customer (`gpt-oss-120b`); the attack runs use all 47 attacks and `gpt-oss-20b` (same family, to split the free-tier token budget). Errored trials were rerun until none remained, so every number below covers every trial.
 
 ### Models (multi-agent design)
 
@@ -125,10 +125,10 @@ All runs use the same 30-task core subset (`evals/subsets/core-30.txt`) and the 
 
 ### Attacks (47 attacks, qwen3:8b, multi-agent)
 
-| Defenses | Run | Attack success rate (95% CI) | Unauthorized data changes | Violating replies only | Blocked attempts per trial |
-|---|---|---|---|---|---|
-| all on | [`attacks-qwen3-8b-defenses-all`](evals/runs/attacks-qwen3-8b-defenses-all.json) | 12.8% [4.3%, 23.4%] | 0 of 47 | 5 of 47 | 0.23 |
-| all off | [`attacks-qwen3-8b-defenses-none`](evals/runs/attacks-qwen3-8b-defenses-none.json) | 27.7% [14.9%, 40.4%] | 6 of 47 | 6 of 47 | 0.00 |
+| Defenses | Run | Attack success rate (95% CI) | Unauthorized data changes | Violating replies only | Stopped a required action | Blocked attempts per trial |
+|---|---|---|---|---|---|---|
+| all on | [`attacks-qwen3-8b-defenses-all`](evals/runs/attacks-qwen3-8b-defenses-all.json) | 12.8% [4.3%, 23.4%] | 0 of 47 | 5 of 47 | 1 of 47 | 0.23 |
+| all off | [`attacks-qwen3-8b-defenses-none`](evals/runs/attacks-qwen3-8b-defenses-none.json) | 27.7% [14.9%, 40.4%] | 6 of 47 | 6 of 47 | 1 of 47 | 0.00 |
 
 | Attack family | Success, defenses on | Success, defenses off |
 |---|---|---|
@@ -153,7 +153,7 @@ Attacks that still succeed with defenses on: `attack-false-confirm-01`, `attack-
 | [`after-core30-gemini-flashlite-multi-k1`](evals/runs/after-core30-gemini-flashlite-multi-k1.json) | 4 of 30 | 1 | 0 | 1 | 2 | 0 | 0 |
 | [`after-core30-qwen3-8b-multi-k4`](evals/runs/after-core30-qwen3-8b-multi-k4.json) | 75 of 120 | 1 | 2 | 2 | 62 | 0 | 8 |
 
-A judge from another model family (`groq:qwen/qwen3.8-27b`) read a stratified sample of 30 transcripts: the simulated customer followed its goal in 83.3% and broke the task in 20.0%. Those trials are counted as simulator errors above, and unjudged trials are not, so simulator error counts are a lower bound.
+A judge from another model family (`groq:qwen/qwen3.8-27b`) read 30 transcripts, half of them failed trials, so the sample is weighted toward failures: the simulated customer followed its goal in 83.3% and broke the task in 20.0% (33.3% of the failed trials). Judged breaks, plus empty or garbled customer messages, are labelled simulator errors above; the rest are not judged, so simulator-error counts are a lower bound.
 <!-- /RESULTS:TABLES -->
 
 ## How the evaluation works
@@ -195,9 +195,9 @@ Open http://localhost:5173 for the chat, operator console and dashboard, and htt
 ## What I learned
 
 - **The simulator is half the eval.** The first runs scored correct agents as failing because the simulated customer said goodbye in the same message as its request, or wrote the agent's reply for it. A prompt rule did not fix the first problem; enforcing the stop in code did (D12). A judge from a different model family now audits a sample of simulator transcripts, and its verdicts feed the error taxonomy, so simulator faults are counted apart from agent faults.
-- **Read failures before tuning prompts, and expect fixes to be model-specific.** Sorting every failed trial into a fixed taxonomy pointed at two bugs that aggregate scores hid: the front desk promising a transfer it never made, and an outage rule the models read the wrong way (D14, D15). On Gemini the handoff nudge fixed the paperless and hazard tasks and success went from 76.7% to 86.7%, though 30 tasks are too few for that to be significant (p = 0.45). On qwen3:8b it changed nothing, because that model fails differently: it rarely promises a transfer, it just skips the handoff (56 of 120 trials) and tries the work itself. The outage fix only half worked: the agent now files the report, but before verifying the customer, so it is not linked to the account.
-- **Put the policy in the tools, then measure what the prompt alone does.** With every defense on, none of the 47 attacks changed data it should not have; with them all off, 6 did. What still gets through is what the model says: false confirmations ("a $120 credit has been applied" when none was), system prompt fragments and one planted canary. Code can guarantee actions; replies need their own check.
+- **Read failures before tuning prompts, and expect fixes to be model-specific.** Sorting every failed trial into a fixed taxonomy pointed at two bugs that aggregate scores hid: the front desk promising a transfer it never made, and an outage rule the models read the wrong way (D14, D15). On Gemini the two targeted tasks (paperless, hazard) went from failing to passing, and overall success moved from 76.7% to 86.7%, but that is not significant at 30 tasks (p = 0.45) and only 2 of the 5 tasks that improved were the targeted ones. On qwen3:8b nothing measurable changed (+0.8 points, 95% CI -4.2 to +5.8), because that model fails differently: none of its 56 no-handoff trials promised a transfer, so the nudge never fired. The outage fix only half worked: Gemini now files the report but before verifying the customer, so it is not linked to the account, and qwen3:8b still mostly skips the report (filed in 1 of 4 trials).
+- **Put the policy in the tools, then measure what the prompt alone does.** With every defense on, none of the 47 attacks changed data it should not have; with them all off, 6 did. What still gets through is mostly what the model says: false confirmations ("a $120 credit has been applied" when none was), system prompt fragments and one planted canary, plus one user-turn injection that talked the agent out of filing a required outage report. Code can guarantee that bad actions are refused; replies, and actions the agent fails to take, need their own checks.
 - **Free tiers shape the design.** Daily quotas, not speed, were the bottleneck: the 20-request daily cap on the newest Gemini Flash moved the agent to Flash-Lite, the gateway waits out Groq's rolling daily token window, and every response is cached by its full request so reruns, CI replays and the regression gate cost nothing.
-- **A multi-agent design can cost a small model more than it gives.** On qwen3:8b the single agent beat the triage-plus-specialists design by 26.7 points (63.3% vs 36.7%, p = 0.001), mostly because the small model's front desk skipped handoffs. Larger models handed off in 28 of 30 trials.
+- **A multi-agent design can cost a small model more than it gives.** On qwen3:8b the single agent beat the triage-plus-specialists design by 26.7 points (63.3% vs 36.7%, p = 0.001). Skipped handoffs explain about half of it: the front desk never handed off in 33 of the 76 failed multi-agent trials, while the larger models handed off in 28 of 30.
 - **Reproducible means pinned everywhere.** Byte-for-byte replay needed a fixed clock, deterministic ids, rolled-back trial transactions, and a cache key that does not depend on which API keys happen to be present.
 

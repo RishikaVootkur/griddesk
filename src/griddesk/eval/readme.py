@@ -59,8 +59,8 @@ def headline(root: Path) -> str:
     single = load_run(root / QWEN_SINGLE)
     gem_after = load_run(root / GEMINI_AFTER)
     att_all, att_none = load_run(root / ATTACKS_ALL), load_run(root / ATTACKS_NONE)
-    n_all, changed_all, said_all = attack_counts(att_all)
-    n_none, changed_none, _ = attack_counts(att_none)
+    n_all, changed_all, said_all, blocked_all = attack_counts(att_all)
+    n_none, changed_none, _, _ = attack_counts(att_none)
     fix = paired_test(per_task(gem), per_task(gem_after))
     design = paired_test(per_task(qwen), per_task(single))
     sim = json.loads((root / SIM_VALIDATION).read_text())
@@ -79,9 +79,11 @@ def headline(root: Path) -> str:
             f"| Policy violations on ordinary tasks, worst run | {_pct(worst_violations)} |",
             f"| Attacks that changed data, defenses on / off | {changed_all} of {n_all} / "
             f"{changed_none} of {n_none} |",
-            f"| Attacks that only got a violating reply, defenses on | {said_all} of {n_all} |",
-            f"| Fix effect on Gemini (paired, same 30 tasks) | {fix.diff.mean:+.1%}, p = {fix.p_value:.2f} |",
-            f"| Simulator broke the task (judged sample of {sim['judged']}) | "
+            f"| Other attacks that worked, defenses on | {said_all} of {n_all} got a violating reply "
+            f"(a false confirmation or leaked text); {blocked_all} stopped a required action |",
+            f"| Fix effect on Gemini (paired, same 30 tasks) | {fix.diff.mean * 100:+.1f} points, "
+            f"p = {fix.p_value:.2f} (not significant) |",
+            f"| Simulator broke the task (judged, failure-weighted sample of {sim['judged']}) | "
             f"{_pct(sim['broke_task_rate'])} |",
         ]
     )
@@ -132,7 +134,7 @@ def taxonomy_table(root: Path) -> str:
 
 
 def family_table(root: Path) -> str:
-    on, off = by_family(root / ATTACKS_ALL), by_family(root / ATTACKS_NONE)
+    on, off = by_family(root / ATTACKS_ALL, root), by_family(root / ATTACKS_NONE, root)
     out = ["| Attack family | Success, defenses on | Success, defenses off |", "|---|---|---|"]
     for fam in sorted(set(on) | set(off)):
         out.append(f"| {fam.replace('_', ' ')} | {_pct(on.get(fam))} | {_pct(off.get(fam))} |")
@@ -145,9 +147,10 @@ def tables(root: Path) -> str:
     leaks = sorted({t["task_id"] for t in att_all["trials"] if attacked(t)})
     return "\n\n".join(
         [
-            "All runs use the same 30-task core subset (`evals/subsets/core-30.txt`) and the same simulated "
-            "customer (`gpt-oss-120b`). Errored trials were rerun until none remained, so every number below "
-            "covers every trial.",
+            "Task runs use the same 30-task core subset (`evals/subsets/core-30.txt`) and the same simulated "
+            "customer (`gpt-oss-120b`); the attack runs use all 47 attacks and `gpt-oss-20b` (same family, "
+            "to split the free-tier token budget). Errored trials were rerun until none remained, so every "
+            "number below covers every trial.",
             "### Models (multi-agent design)",
             model_table([root / GEMINI, root / GROQ, root / QWEN]),
             "### Reliability (pass^k, 4 trials per task)",
@@ -170,11 +173,13 @@ def tables(root: Path) -> str:
             "Attacks that still succeed with defenses on: " + ", ".join(f"`{t}`" for t in leaks) + ".",
             "### Error taxonomy (failed trials)",
             taxonomy_table(root),
-            f"A judge from another model family (`{sim['judge_model']}`) read a stratified sample "
-            f"of {sim['judged']} transcripts: the simulated customer followed its goal in "
-            f"{_pct(sim['followed_goal_rate'])} and broke the task in {_pct(sim['broke_task_rate'])}. "
-            "Those trials are counted as simulator errors above, and unjudged trials are not, so simulator "
-            "error counts are a lower bound.",
+            f"A judge from another model family (`{sim['judge_model']}`) read {sim['judged']} transcripts, "
+            "half of them failed trials, so the sample is weighted toward failures: the simulated customer "
+            f"followed its goal in {_pct(sim['followed_goal_rate'])} and broke the task in "
+            f"{_pct(sim['broke_task_rate'])} "
+            f"({_pct(sim['broke_task_rate_on_failed'])} of the failed trials). "
+            "Judged breaks, plus empty or garbled customer messages, are labelled simulator errors above; "
+            "the rest are not judged, so simulator-error counts are a lower bound.",
         ]
     )
 
