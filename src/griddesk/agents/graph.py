@@ -25,6 +25,7 @@ from typing import Annotated, Any, Literal, TypedDict
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
+from griddesk.agents.claims import claims_action
 from griddesk.agents.prompts import system_prompt
 from griddesk.agents.toolbox import Toolbox, compact
 from griddesk.gateway import BudgetExceeded, Gateway, LLMRequest, Message, ProviderError, ToolSpec
@@ -70,26 +71,17 @@ READ_ONLY_TOOLS = frozenset(
         "verify_identity",
     }
 )
-# "A $120 credit has been applied", "I've waived the late fee", "your stop is confirmed". Attack runs found
-# agents confirming actions that never ran (false-confirmation attacks won 2 of 3 with every defense on).
-_CLAIMED_ACTION = re.compile(
-    r"\b(has|have)\s+(now\s+)?been\s+(applied|credited|waived|scheduled|confirmed|cancell?ed|updated|changed|"
-    r"set\s+up|processed|filed|enrolled|stopped|started|transferred|refunded|removed|reversed)\b"
-    r"|\bI(\s+have|'ve|\s+just)\s+(applied|credited|waived|scheduled|confirmed|cancell?ed|updated|changed|"
-    r"set\s+up|processed|filed|enrolled|stopped|started|transferred|refunded|removed|reversed)\b"
-    r"|\b(is|are)\s+(now\s+)?(confirmed|scheduled|enrolled)\b",
-    re.IGNORECASE,
-)
 CLAIM_NOTE = (
     "Your last reply says an action was completed, but no tool call in this turn performed it, so that reply "
     "was not sent to the customer. Only say something was done if a tool result in this conversation shows "
     "it. If it was done earlier in this conversation, you may say so. Otherwise call the right tool, or tell "
     "the customer plainly what you can and cannot do. Write the reply the customer should see."
 )
-
-
-def claims_action(text: str) -> bool:
-    return bool(_CLAIMED_ACTION.search(text or ""))
+# Sent in place of a second unsupported claim in the same turn: a coaching retry is not a guarantee.
+SAFE_REPLY = (
+    "I need to correct myself: I have not completed that action. I can check what is possible for your "
+    "account and explain the next step. What would you like me to do?"
+)
 
 
 def promises_handoff(text: str) -> bool:
@@ -187,14 +179,18 @@ def build_graph(
             }
         msg = resp.as_message().model_dump(exclude_none=True)
         msg["agent"] = spec.name
-        if (
+        unsupported = (
             not msg.get("tool_calls")
             and not state.get("acted")
-            and not state.get("claim_checked")
-            and steps + 1 < config.max_steps_per_turn
             and claims_action(str(msg.get("content") or ""))
-        ):
-            msg["internal"] = True  # held back: the customer never sees this reply
+        )
+        if not unsupported:
+            return {"messages": [msg], "steps": steps + 1, "agent": spec.name}
+        msg["internal"] = True  # held back: the customer never sees this reply
+        if state.get("claim_checked") or steps + 1 >= config.max_steps_per_turn:
+            # Already coached once this turn (or no step left to retry): send a fixed, true reply instead.
+            safe = {"role": "assistant", "content": SAFE_REPLY, "agent": spec.name}
+            return {"messages": [msg, safe], "steps": steps + 1, "agent": spec.name}
         return {"messages": [msg], "steps": steps + 1, "agent": spec.name}
 
     async def tools_node(state: ConvState) -> dict[str, Any]:
@@ -231,8 +227,8 @@ def build_graph(
                 )
                 err = result.get("error") or {}
                 if err.get("code") == "needs_approval" and result.get("approval_request_id"):
+                    # Parked for a supervisor is not done: "your credit has been applied" is still false.
                     pending.append({"id": result["approval_request_id"], "action": tc.name})
-                    update["acted"] = True
                 elif result.get("ok") and tc.name not in READ_ONLY_TOOLS:
                     update["acted"] = True
                 content = toolbox.render(tc.name, result, state["conversation_id"])
@@ -253,12 +249,14 @@ def build_graph(
         )
         result = await toolbox.execute_approved(first["action"], first["id"])
         status = result.get("status")
+        acted = bool(state.get("acted"))
         if result.get("ok") and status == "executed":
             # The tool result is untrusted data like any other: filter and spotlight it, and keep only
             # the runtime's own sentence outside the block.
             rendered = toolbox.render(first["action"], result, state["conversation_id"])
             note = f"A supervisor approved request {first['id']} and it was completed. Result:\n{rendered}"
             pending = pending[1:]
+            acted = True
         elif status == "denied":
             note = f"A supervisor denied request {first['id']}. The action was not performed."
             pending = pending[1:]
@@ -272,7 +270,7 @@ def build_graph(
             "messages": [{"role": "user", "content": RUNTIME_NOTICE + note}],
             "pending": pending,
             "steps": 0,
-            "acted": True,
+            "acted": acted,
         }
 
     def nudge_node(state: ConvState) -> dict[str, Any]:
@@ -288,10 +286,11 @@ def build_graph(
         steps = state.get("steps", 0)
         if last.get("tool_calls") and steps <= config.max_steps_per_turn:
             return "tools"
+        if last.get("internal") and last.get("role") == "assistant":
+            # Before the approval pause, so a false "applied" written while a request waits is caught.
+            return "claim_check"
         if state.get("pending"):
             return "approval"
-        if last.get("internal"):
-            return "claim_check"
         at_front_desk = len(specs) > 1 and (state.get("agent") or entry) == entry
         can_nudge = (
             at_front_desk

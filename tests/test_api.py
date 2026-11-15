@@ -433,3 +433,23 @@ def test_run_summary_reports_policy_off_when_defenses_are_off():
     off = api.run_summary(Path("x.json"), {**run, "config": {**base, "defenses": {"in_tool_policy": False}}})
     on = api.run_summary(Path("x.json"), {**run, "config": base})
     assert off["enforce_policy"] is False and on["enforce_policy"] is True
+
+
+async def test_held_back_claim_never_reaches_the_customer(sessions):
+    st = await make_state(
+        sessions,
+        [
+            LLMResponse(model="x", content="A $120 credit has been applied to your account."),
+            LLMResponse(model="x", content="I have not applied any credit. What is your account number?"),
+        ],
+    )
+    client = client_for(st)
+    conv, auth = await new_conversation(client)
+    url = f"/api/conversations/{conv}/messages"
+    evs = events((await client.post(url, json={"text": "Confirm my $120 credit"}, headers=auth)).text)
+    streamed = " ".join(d.get("text", "") for e, d in evs if e == "agent")
+    assert "has been applied" not in streamed and "have not applied" in streamed
+    detail = (await client.get(f"/api/conversations/{conv}", headers=auth)).json()
+    assert [x["role"] for x in detail["messages"]] == ["customer", "agent"]
+    assert not any("has been applied" in x["text"] for x in detail["messages"])
+    await st.toolbox.close()

@@ -8,6 +8,7 @@ from sqlalchemy import select
 from griddesk.agents.graph import (
     NUDGE_NOTE,
     RUNTIME_NOTICE,
+    SAFE_REPLY,
     AgentConfig,
     claims_action,
     is_internal_note,
@@ -469,7 +470,8 @@ async def test_claim_check_runs_at_most_once_a_turn_and_resets(sessions):
         ],
     )
     res = await runner.send("conv-c2", "Confirm my stop.")
-    assert len(fake.requests) == 2 and res.reply == "Your stop is confirmed for November 20."
+    # A second unsupported claim in the same turn is replaced by a fixed, true reply.
+    assert len(fake.requests) == 2 and res.reply == SAFE_REPLY
     await runner.send("conv-c2", "So it's confirmed?")
     assert len(fake.requests) == 4  # the check resets each customer turn
     await tb.close()
@@ -535,3 +537,73 @@ async def test_a_read_only_tool_is_not_an_action(sessions):
 )
 def test_claims_action_phrases(text, expected):
     assert claims_action(text) is expected
+
+
+async def test_claim_while_an_approval_is_parked_is_held_back(sessions):
+    ctx = make_ctx(sessions)
+    acct = one(ctx, WAIVABLE)
+    cust = one(ctx, "select last_name, ssn_last4 from customers where id = :c", c=acct.customer_id)
+    runner, tb, _fake = await runner_for(
+        ctx,
+        [
+            use("verify_identity", 1, account_id=acct.id, last_name=cust.last_name, ssn_last4=cust.ssn_last4),
+            use("apply_credit", 2, account_id=acct.id, amount="40.00", reason_code="goodwill"),
+            say("Your $40 credit has been applied."),
+            say("I've sent your $40 credit request to a supervisor."),
+        ],
+    )
+    res = await runner.send("conv-c5", "I want a credit for the trouble.")
+    assert res.awaiting_approval and "has been applied" not in res.reply
+    assert res.reply == "I've sent your $40 credit request to a supervisor."
+    await tb.close()
+
+
+async def test_claim_after_a_denied_approval_is_held_back(sessions):
+    ctx = make_ctx(sessions)
+    acct = one(ctx, WAIVABLE)
+    cust = one(ctx, "select last_name, ssn_last4 from customers where id = :c", c=acct.customer_id)
+    runner, tb, _fake = await runner_for(
+        ctx,
+        [
+            use("verify_identity", 1, account_id=acct.id, last_name=cust.last_name, ssn_last4=cust.ssn_last4),
+            use("apply_credit", 2, account_id=acct.id, amount="40.00", reason_code="goodwill"),
+            say("I've sent this to a supervisor."),
+            say("Good news: your $40 credit has been applied."),
+            say("A supervisor reviewed it and could not approve the credit."),
+        ],
+    )
+    first = await runner.send("conv-c6", "I want a credit for the trouble.")
+    approvals.decide(ctx, first.awaiting_approval["approval_request_id"], "deny", operator="op")
+    second = await runner.resume("conv-c6")
+    assert second.reply == "A supervisor reviewed it and could not approve the credit."
+    await tb.close()
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Done!",
+        "The credit was applied.",
+        "The credit has been successfully applied.",
+        "I went ahead and applied the credit.",
+        "Your late fee is waived.",
+        "Your credit of $120 is on your account.",
+        "Your service will be stopped on 2026-11-20.",
+        "I've initiated the process to move your service.",
+    ],
+)
+def test_claims_action_catches_common_false_confirmations(text):
+    assert claims_action(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Your identity has been confirmed. How can I help?",
+        "Crews are scheduled to arrive by 6 PM.",
+        "Your next bill is scheduled for December 1.",
+        "Your request has been sent to a supervisor for approval.",
+    ],
+)
+def test_claims_action_skips_lookups_and_honest_status(text):
+    assert not claims_action(text)
