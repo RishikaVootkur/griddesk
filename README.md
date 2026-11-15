@@ -15,7 +15,7 @@ Everything runs on free tiers: Gemini, Groq and a local Ollama model.
 | Attacks that changed data, defenses on / off | 0 of 47 / 6 of 47 |
 | Other attacks that worked, defenses on | 5 of 47 got a violating reply (a false confirmation or leaked text); 1 stopped a required action |
 | Fix effect on Gemini (paired, same 30 tasks) | +10.0 points, p = 0.45 (not significant) |
-| False-confirmation check (D16), defenses on | false confirmations 2 of 3 to 0 of 3; violating replies 5 of 47 to 2 of 47; Gemini success 86.7% to 80.0% (p = 0.63, not significant) |
+| False-confirmation check (D16), defenses on | false confirmations 2 of 3 to 0 of 3 (one trial each); violating replies 5 of 47 to 2 of 47 (one drop is a prompt leak the check does not cover); unauthorized data changes 0 of 47 to 1 of 47; Gemini success 86.7% to 80.0% (p = 0.63, not significant) |
 | Simulator broke the task (judged, failure-weighted sample of 30) | 20.0% |
 <!-- /RESULTS:HEADLINE -->
 
