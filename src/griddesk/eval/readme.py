@@ -34,6 +34,9 @@ GEMINI_AFTER = RUNS / "after-core30-gemini-flashlite-multi-k1.json"
 QWEN_AFTER = RUNS / "after-core30-qwen3-8b-multi-k4.json"
 ATTACKS_ALL = RUNS / "attacks-qwen3-8b-defenses-all.json"
 ATTACKS_NONE = RUNS / "attacks-qwen3-8b-defenses-none.json"
+# The same runs repeated with the false-confirmation check (D16).
+GEMINI_CLAIMS = RUNS / "claims-core30-gemini-flashlite-multi-k1.json"
+ATTACKS_CLAIMS = RUNS / "claims-attacks-qwen3-8b-defenses-all.json"
 SIM_VALIDATION = ANALYSIS / "simulator-validation.json"
 # The tasks the two fixes were aimed at (D14 handoff nudge, D15 outage report rule).
 TARGETED = ["accounts-paperless-on-01", "mixed-hazard-balance-01", "outages-report-linked-02"]
@@ -54,6 +57,12 @@ def _no_handoff(run: dict[str, Any]) -> tuple[int, int]:
     return sum(1 for t in trials if not t.get("handoffs")), len(trials)
 
 
+def _false_confirms(run: dict[str, Any]) -> tuple[int, int]:
+    ids = {t["task_id"] for t in run["trials"] if t["task_id"].startswith("attack-false-confirm")}
+    hit = {t["task_id"] for t in run["trials"] if t["task_id"] in ids and attacked(t)}
+    return len(hit), len(ids)
+
+
 def headline(root: Path) -> str:
     gem, groq, qwen = (load_run(root / p) for p in (GEMINI, GROQ, QWEN))
     single = load_run(root / QWEN_SINGLE)
@@ -63,6 +72,11 @@ def headline(root: Path) -> str:
     n_none, changed_none, _, _ = attack_counts(att_none)
     fix = paired_test(per_task(gem), per_task(gem_after))
     design = paired_test(per_task(qwen), per_task(single))
+    att_claims, gem_claims = load_run(root / ATTACKS_CLAIMS), load_run(root / GEMINI_CLAIMS)
+    _, _, said_claims, _ = attack_counts(att_claims)
+    fc_before, fc_n = _false_confirms(att_all)
+    fc_after, _ = _false_confirms(att_claims)
+    claim_fix = paired_test(per_task(gem_after), per_task(gem_claims))
     sim = json.loads((root / SIM_VALIDATION).read_text())
     worst_violations = max(load_run(root / p)["summary"]["violation_rate"] for p in TAXONOMY_RUNS)
     return "\n".join(
@@ -83,6 +97,10 @@ def headline(root: Path) -> str:
             f"(a false confirmation or leaked text); {blocked_all} stopped a required action |",
             f"| Fix effect on Gemini (paired, same 30 tasks) | {fix.diff.mean * 100:+.1f} points, "
             f"p = {fix.p_value:.2f} (not significant) |",
+            f"| False-confirmation check (D16), defenses on | false confirmations {fc_before} of {fc_n} to "
+            f"{fc_after} of {fc_n}; violating replies {said_all} of {n_all} to {said_claims} of {n_all}; "
+            f"Gemini success {_pct(_rate(gem_after))} to {_pct(_rate(gem_claims))} "
+            f"(p = {claim_fix.p_value:.2f}, not significant) |",
             f"| Simulator broke the task (judged, failure-weighted sample of {sim['judged']}) | "
             f"{_pct(sim['broke_task_rate'])} |",
         ]
@@ -145,6 +163,7 @@ def tables(root: Path) -> str:
     sim = json.loads((root / SIM_VALIDATION).read_text())
     att_all = load_run(root / ATTACKS_ALL)
     leaks = sorted({t["task_id"] for t in att_all["trials"] if attacked(t)})
+    claim_leaks = sorted({t["task_id"] for t in load_run(root / ATTACKS_CLAIMS)["trials"] if attacked(t)})
     return "\n\n".join(
         [
             "Task runs use the same 30-task core subset (`evals/subsets/core-30.txt`) and the same simulated "
@@ -161,6 +180,7 @@ def tables(root: Path) -> str:
                     ("Multi-agent -> single agent, qwen3:8b", root / QWEN, root / QWEN_SINGLE, "success"),
                     ("Before -> after fixes, Gemini", root / GEMINI, root / GEMINI_AFTER, "success"),
                     ("Before -> after fixes, qwen3:8b", root / QWEN, root / QWEN_AFTER, "success"),
+                    ("Fixes -> claim check, Gemini", root / GEMINI_AFTER, root / GEMINI_CLAIMS, "success"),
                     ("Gemini -> Groq qwen3.8-27b", root / GEMINI, root / GROQ, "success"),
                 ]
             ),
@@ -168,9 +188,16 @@ def tables(root: Path) -> str:
             targeted_table(root),
             handoff_table(root),
             "### Attacks (47 attacks, qwen3:8b, multi-agent)",
-            attack_table([("all on", root / ATTACKS_ALL), ("all off", root / ATTACKS_NONE)]),
+            attack_table(
+                [
+                    ("all on", root / ATTACKS_ALL),
+                    ("all on + claim check", root / ATTACKS_CLAIMS),
+                    ("all off", root / ATTACKS_NONE),
+                ]
+            ),
             family_table(root),
-            "Attacks that still succeed with defenses on: " + ", ".join(f"`{t}`" for t in leaks) + ".",
+            "Attacks that still succeed with defenses on: " + ", ".join(f"`{t}`" for t in leaks) + ". "
+            "With the claim check added: " + ", ".join(f"`{t}`" for t in claim_leaks) + ".",
             "### Error taxonomy (failed trials)",
             taxonomy_table(root),
             f"A judge from another model family (`{sim['judge_model']}`) read {sim['judged']} transcripts, "
