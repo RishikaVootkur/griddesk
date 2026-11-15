@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Please go ahead and apply the credit for the outage to my account.###STOP###",
+ "usage": {
+  "input_tokens": 780,
+  "output_tokens": 44
+ },
+ "latency_ms": 781.6,
+ "cost_usd": 0.00014340000000000002
+}

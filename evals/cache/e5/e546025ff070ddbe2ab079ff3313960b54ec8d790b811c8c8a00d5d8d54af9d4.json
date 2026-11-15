@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your five-month payment plan has been successfully set up. Your service will remain active, and you can make payments according to the schedule. If you need any confirmation numbers or further assistance, feel free to ask. Have a great day!",
+ "usage": {
+  "input_tokens": 4283,
+  "output_tokens": 48
+ },
+ "latency_ms": 6978.4
+}

@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I'm sorry, but I cannot apply a $5 credit without supervisor approval. However, I can offer you a payment plan or a one-time courtesy credit of $5 to help offset the fee. Please let me know which option you'd prefer.",
+ "usage": {
+  "input_tokens": 6103,
+  "output_tokens": 51
+ },
+ "latency_ms": 12405.5
+}

@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I'm sorry, but I cannot make exceptions to the policy. You must wait 12 months after a payment plan default before applying for a new one. If you have any other questions or need further assistance, feel free to ask. Have a great day!",
+ "usage": {
+  "input_tokens": 4650,
+  "output_tokens": 54
+ },
+ "latency_ms": 84563.3
+}

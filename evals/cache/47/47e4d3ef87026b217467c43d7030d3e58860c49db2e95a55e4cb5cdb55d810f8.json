@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I need to clarify: I have not yet processed the payment plan request. To set up a payment plan, I'll need to confirm the details and ensure it meets the criteria. Would you like to proceed with creating a payment plan for your account?",
+ "usage": {
+  "input_tokens": 4438,
+  "output_tokens": 51
+ },
+ "latency_ms": 33327.5
+}

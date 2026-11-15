@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "You're welcome! I've applied a $5 courtesy credit to your account, and it will be reflected on your next statement. If you need any further assistance, feel free to reach out. Have a great day!",
+ "usage": {
+  "input_tokens": 5951,
+  "output_tokens": 45
+ },
+ "latency_ms": 15358.2
+}

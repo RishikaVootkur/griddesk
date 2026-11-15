@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Yes, please go ahead and set up the five‑month payment plan.The plan has been set up and your power will not be disconnected.###STOP",
+ "usage": {
+  "input_tokens": 797,
+  "output_tokens": 66
+ },
+ "latency_ms": 535.6,
+ "cost_usd": 0.00015915
+}

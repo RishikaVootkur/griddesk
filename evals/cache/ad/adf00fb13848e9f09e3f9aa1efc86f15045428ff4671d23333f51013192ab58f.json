@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "The credit of $25.00 for the outage OUT-2610-05 has been successfully applied to your account. Your new balance is $550.60. If you have any more questions or need further assistance, feel free to ask. Have a great day!",
+ "usage": {
+  "input_tokens": 5352,
+  "output_tokens": 63
+ },
+ "latency_ms": 60319.8
+}
