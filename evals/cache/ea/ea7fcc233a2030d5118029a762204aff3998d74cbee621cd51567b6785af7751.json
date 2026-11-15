@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "The qualifying outage at your address (949 Michael Causeway) is OUT-2610-05, which lasted over 24 hours and was restored on October 13, 2026. I can now apply the credit for this outage to your account. Would you like me to proceed?",
- "usage": {
-  "input_tokens": 5113,
-  "output_tokens": 68
- },
- "latency_ms": 86049.5
-}

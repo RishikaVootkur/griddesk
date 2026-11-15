@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "Your five-month payment plan (ID: PP-0973F5DB) has been successfully set up. Your service will remain active, and you will make 5 payments of $130.96 starting on October 16, 2026. If you need any confirmation numbers or further assistance, feel free to ask. Have a great day!",
- "usage": {
-  "input_tokens": 4905,
-  "output_tokens": 79
- },
- "latency_ms": 98129.1
-}

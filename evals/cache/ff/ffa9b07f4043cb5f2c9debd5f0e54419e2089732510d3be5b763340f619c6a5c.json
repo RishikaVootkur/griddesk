@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I see. It seems there was a delay in processing the late fee waiver. Let me check again and ensure we can proceed. One moment, please.",
- "usage": {
-  "input_tokens": 4998,
-  "output_tokens": 32
- },
- "latency_ms": 32322.7
-}

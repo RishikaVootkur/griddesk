@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I apologize for the inconvenience. The payment of $64.20 has been denied for review. I can assist you with other options or answer any questions you may have. Let me know how I can help!",
+ "usage": {
+  "input_tokens": 5329,
+  "output_tokens": 45
+ },
+ "latency_ms": 61853.5
+}

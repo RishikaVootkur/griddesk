@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Is there any way to make an exception?",
+ "usage": {
+  "input_tokens": 795,
+  "output_tokens": 27
+ },
+ "latency_ms": 627.5,
+ "cost_usd": 0.00013544999999999999
+}

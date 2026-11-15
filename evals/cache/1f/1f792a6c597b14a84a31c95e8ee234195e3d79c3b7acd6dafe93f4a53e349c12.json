@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I apologize, but it seems you are not eligible to set up a payment plan at this time. You previously had a payment plan that defaulted on 2026-02-07, and you must wait 12 months before applying for a new one. If you have any other questions or need further assistance, feel free to ask. Have a great day!",
- "usage": {
-  "input_tokens": 4551,
-  "output_tokens": 78
- },
- "latency_ms": 48690.3
-}

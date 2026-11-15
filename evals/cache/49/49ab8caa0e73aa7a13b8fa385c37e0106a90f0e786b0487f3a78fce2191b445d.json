@@ -1,9 +1,0 @@
-{
- "model": "ollama:qwen3:8b",
- "content": "I need the specific outage ID to apply the credit for the outage. The qualifying outages at your address are those that lasted over 24 hours and were restored in the last 30 days. Could you please provide the outage ID?",
- "usage": {
-  "input_tokens": 4832,
-  "output_tokens": 50
- },
- "latency_ms": 35865.0
-}

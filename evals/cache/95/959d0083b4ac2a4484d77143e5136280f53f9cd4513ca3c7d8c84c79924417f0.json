@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I'm sorry for the confusion. Since the payment was denied, I can assist you with other options, such as paying the balance in full through the portal or setting up a payment plan if your balance meets the requirements. Let me know how I can help you move forward!",
+ "usage": {
+  "input_tokens": 5395,
+  "output_tokens": 56
+ },
+ "latency_ms": 11307.8
+}
