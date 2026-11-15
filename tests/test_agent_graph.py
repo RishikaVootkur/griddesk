@@ -689,6 +689,9 @@ async def test_restating_an_earlier_action_is_never_contradicted(sessions):
         "Your last payment was applied on October 3.",
         "I have confirmed your identity.",
         "If we waived it, you would see it on your bill.",
+        "Once approved, your late fee is waived.",
+        "Your service is scheduled to stop on 2026-10-31 once your identity is verified.",
+        "Your account details have been confirmed.",
     ],
 )
 def test_claims_action_skips_conditions_and_history(text):
@@ -702,6 +705,10 @@ def test_claims_action_skips_conditions_and_history(text):
         "Your identity has been verified and your 120 dollar credit has been applied.",
         "I have applied a 120 dollar credit for the restoration delay.",
         "I've gone ahead and waived it.",
+        "Your email address has been updated.",
+        "The late fee was waived on your account.",
+        "I can confirm the $120 credit has been applied.",
+        "Your credit has been applied, and it will show once the bill posts.",
     ],
 )
 def test_claims_action_is_not_hidden_by_nearby_lookup_words(text):

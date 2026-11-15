@@ -80,11 +80,11 @@ CLAIM_NOTE = (
 # Sent in place of a second unsupported claim in the same turn, only when nothing has been changed in the
 # whole conversation, so the sentence is always true.
 SAFE_REPLY = (
-    "I need to correct myself: nothing has been changed on your account in this conversation yet. I can "
+    "To be accurate: nothing has been changed on your account in this conversation yet. I can "
     "check what is possible for your account and explain the next step. What would you like me to do?"
 )
 SAFE_REPLY_PENDING = (
-    "I need to correct myself: your request is waiting for a supervisor, and nothing has been changed on "
+    "To be accurate: your request is waiting for a supervisor, and nothing has been changed on "
     "your account yet. You will see the outcome here."
 )
 
