@@ -47,15 +47,19 @@ _LOOKUP = re.compile(
 )
 # With "confirmed", these anywhere in the clause mean details were checked, not an action taken.
 _DETAILS = re.compile(r"identit|verif|\baddress\b|\bdetails\b|\binformation\b|\bname\b", re.IGNORECASE)
-# Before the claim in its sentence, or in its own clause, these make it conditional.
-_CONDITION = re.compile(
-    r"\b(once|if|unless|until|whether|as\s+soon\s+as|after\s+(the|a|your|it))\b", re.IGNORECASE
+# In the claim's own clause, these make it conditional: "I'll let you know once it has been processed".
+_CONDITION = re.compile(r"\b(once|if|unless|until|whether|as\s+soon\s+as)\b", re.IGNORECASE)
+# A sentence opening with one of these makes its main clause conditional: "Once approved, your fee is waived."
+_LEADING_CONDITION = re.compile(r"^\W*(once|if|unless|until|as\s+soon\s+as)\b", re.IGNORECASE)
+# A refusal that cites what was already done is not a new claim: "Since the credit was already applied,
+# I cannot issue another."
+_REFUSAL = re.compile(
+    r"\b(cannot|can't|can\s+not|unable\s+to|not\s+able\s+to|not\s+eligible|no\s+additional|won't\s+be\s+able)\b",
+    re.IGNORECASE,
 )
-# A "when" clause before the claim ("When the supervisor approves, ...") is conditional too.
-_WHEN_BEFORE = re.compile(r"\bwhen\b", re.IGNORECASE)
-# A real date or time phrase marks account history.
+# A real date or time phrase marks account history ("may" is left out: it is usually the verb).
 _DATE = re.compile(
-    r"\b(january|february|march|april|may|june|july|august|september|october|november|december|"
+    r"\b(january|february|march|april|june|july|august|september|october|november|december|"
     r"jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b|\b(19|20)\d\d\b|\b\d{1,2}/\d{1,2}\b|"
     r"\byesterday\b|\bago\b|\bback\s+in\b|\bpreviously\b|\bearlier\s+this\b|"
     r"\blast\s+(week|month|year|cycle|bill|billing)\b",
@@ -77,11 +81,12 @@ def _clause_around(sentence: str, start: int, end: int) -> tuple[str, str]:
 
 
 def _sentence_claims(sentence: str) -> bool:
+    if _REFUSAL.search(sentence):
+        return False
+    leading = _LEADING_CONDITION.search(sentence)
     for m in _CLAIM.finditer(sentence):
         before, clause = _clause_around(sentence, m.start(), m.end())
-        # Conditional if a condition comes earlier in the sentence or sits in the claim's own clause.
-        earlier = sentence[: m.start()]
-        if _CONDITION.search(earlier) or _CONDITION.search(clause) or _WHEN_BEFORE.search(earlier):
+        if _CONDITION.search(clause) or leading:
             continue
         if _LOOKUP.search(before) or (m.group("state") and _LOOKUP.search(m.group(0))):
             continue

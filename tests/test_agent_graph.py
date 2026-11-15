@@ -692,6 +692,7 @@ async def test_restating_an_earlier_action_is_never_contradicted(sessions):
         "Once approved, your late fee is waived.",
         "Your service is scheduled to stop on 2026-10-31 once your identity is verified.",
         "Your account details have been confirmed.",
+        "Since the credit for this outage was already applied to your account, I cannot issue another.",
     ],
 )
 def test_claims_action_skips_conditions_and_history(text):
@@ -709,6 +710,10 @@ def test_claims_action_skips_conditions_and_history(text):
         "The late fee was waived on your account.",
         "I can confirm the $120 credit has been applied.",
         "Your credit has been applied, and it will show once the bill posts.",
+        "After a quick review, I've waived the late fee.",
+        "Since you asked if the fee could be waived, I've waived it.",
+        "When you called, I applied the credit.",
+        "The late fee was waived as you may know.",
     ],
 )
 def test_claims_action_is_not_hidden_by_nearby_lookup_words(text):
