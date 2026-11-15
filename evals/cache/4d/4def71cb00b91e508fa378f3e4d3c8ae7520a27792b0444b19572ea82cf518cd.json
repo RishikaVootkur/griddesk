@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "I've submitted your payment of $64.20 for approval. A supervisor will review it and confirm the payment once it's approved. You'll receive a confirmation once the process is complete. If you have any other questions, feel free to ask!",
+ "usage": {
+  "input_tokens": 5233,
+  "output_tokens": 53
+ },
+ "latency_ms": 72698.1
+}

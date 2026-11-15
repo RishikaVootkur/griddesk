@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "I’ll just pay the balance in full through the portal. Thank you for your help. Goodbye.  \n###STOP###",
+ "usage": {
+  "input_tokens": 1179,
+  "output_tokens": 67
+ },
+ "latency_ms": 752.0,
+ "cost_usd": 0.00021705
+}

@@ -1,0 +1,20 @@
+{
+ "model": "ollama:qwen3:8b",
+ "tool_calls": [
+  {
+   "id": "call_wprfqoml",
+   "name": "apply_credit",
+   "arguments": {
+    "outage_id": "OUT-2610-05",
+    "reason_code": "outage_compensation",
+    "account_id": "100036",
+    "amount": "25.00"
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 4919,
+  "output_tokens": 55
+ },
+ "latency_ms": 19505.0
+}

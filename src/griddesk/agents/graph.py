@@ -3,6 +3,8 @@
     START -> agent --tool calls--> tools -> agent ...
                    --approval pending--> approval (interrupt; resumes on operator decision) -> agent
                    --plain reply that promises a transfer, no transfer call--> nudge -> agent (once a turn)
+                   --plain reply that claims an action no tool took this turn--> claim_check -> agent
+                     (the reply is held back from the customer; once a turn)
                    --plain reply--> END (wait for the customer's next message)
 
 One graph invocation is one customer turn. State is checkpointed per conversation (`thread_id`), so
@@ -23,6 +25,7 @@ from typing import Annotated, Any, Literal, TypedDict
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
+from griddesk.agents.claims import claims_action
 from griddesk.agents.prompts import system_prompt
 from griddesk.agents.toolbox import Toolbox, compact
 from griddesk.gateway import BudgetExceeded, Gateway, LLMRequest, Message, ProviderError, ToolSpec
@@ -54,12 +57,44 @@ NUDGE_NOTE = (
 )
 
 
+# Tools that only read. Any other tool that succeeded (or went to a supervisor) this turn counts as an action.
+READ_ONLY_TOOLS = frozenset(
+    {
+        "explain_bill",
+        "get_account_summary",
+        "get_contact_info",
+        "get_restoration_estimate",
+        "list_bills",
+        "lookup_address",
+        "lookup_outage",
+        "search_policy",
+        "verify_identity",
+    }
+)
+CLAIM_NOTE = (
+    "Your last reply says an action was completed, but no tool call in this turn performed it, so that reply "
+    "was not sent to the customer. Only say something was done if a tool result in this conversation shows "
+    "it. If it was done earlier in this conversation, you may say so. Otherwise call the right tool, or tell "
+    "the customer plainly what you can and cannot do. Write the reply the customer should see."
+)
+# Sent in place of a second unsupported claim in the same turn, only when nothing has been changed in the
+# whole conversation, so the sentence is always true.
+SAFE_REPLY = (
+    "To be accurate: nothing has been changed on your account in this conversation yet. I can "
+    "check what is possible for your account and explain the next step. What would you like me to do?"
+)
+SAFE_REPLY_PENDING = (
+    "To be accurate: your request is waiting for a supervisor, and nothing has been changed on "
+    "your account yet. You will see the outcome here."
+)
+
+
 def promises_handoff(text: str) -> bool:
     return bool(_PROMISED_HANDOFF.search(text or ""))
 
 
 def is_internal_note(message: dict[str, Any]) -> bool:
-    """The handoff nudge coaches the agent; it is never shown to the customer."""
+    """Coaching notes (handoff nudge, claim check) and held-back replies are never shown to the customer."""
     return bool(message.get("internal"))
 
 
@@ -94,6 +129,9 @@ class ConvState(TypedDict, total=False):
     pending: list[dict[str, str]]  # approvals waiting for an operator, oldest first
     nudged: bool  # a promised-but-missing handoff was already flagged this turn
     handed_off: bool  # a transfer_to_* call ran this turn
+    acted: bool  # a tool that changes something succeeded (or went to a supervisor) this turn
+    claim_checked: bool  # a reply claiming an unperformed action was already held back this turn
+    ever_acted: bool  # a tool that changes something succeeded at some point in this conversation
     error: str | None
 
 
@@ -147,6 +185,24 @@ def build_graph(
             }
         msg = resp.as_message().model_dump(exclude_none=True)
         msg["agent"] = spec.name
+        unsupported = (
+            not msg.get("tool_calls")
+            and not state.get("acted")
+            and claims_action(str(msg.get("content") or ""))
+        )
+        if not unsupported:
+            return {"messages": [msg], "steps": steps + 1, "agent": spec.name}
+        if state.get("claim_checked") or steps + 1 >= config.max_steps_per_turn:
+            # Already coached once this turn, or no step left to retry.
+            if state.get("ever_acted"):
+                # Something was done earlier in the conversation, so this may be an honest restatement and
+                # no fixed sentence is guaranteed true: send it (D16 limit).
+                return {"messages": [msg], "steps": steps + 1, "agent": spec.name}
+            msg["internal"] = True
+            text = SAFE_REPLY_PENDING if state.get("pending") else SAFE_REPLY
+            safe = {"role": "assistant", "content": text, "agent": spec.name}
+            return {"messages": [msg, safe], "steps": steps + 1, "agent": spec.name}
+        msg["internal"] = True  # held back: the customer never sees this reply
         return {"messages": [msg], "steps": steps + 1, "agent": spec.name}
 
     async def tools_node(state: ConvState) -> dict[str, Any]:
@@ -183,7 +239,11 @@ def build_graph(
                 )
                 err = result.get("error") or {}
                 if err.get("code") == "needs_approval" and result.get("approval_request_id"):
+                    # Parked for a supervisor is not done: "your credit has been applied" is still false.
                     pending.append({"id": result["approval_request_id"], "action": tc.name})
+                elif result.get("ok") and tc.name not in READ_ONLY_TOOLS:
+                    update["acted"] = True
+                    update["ever_acted"] = True
                 content = toolbox.render(tc.name, result, state["conversation_id"])
             new.append({"role": "tool", "tool_call_id": tc.id, "name": tc.name, "content": content})
         return {"messages": new, "pending": pending, **update}
@@ -202,12 +262,16 @@ def build_graph(
         )
         result = await toolbox.execute_approved(first["action"], first["id"])
         status = result.get("status")
+        acted = bool(state.get("acted"))
+        ever_acted = bool(state.get("ever_acted"))
         if result.get("ok") and status == "executed":
             # The tool result is untrusted data like any other: filter and spotlight it, and keep only
             # the runtime's own sentence outside the block.
             rendered = toolbox.render(first["action"], result, state["conversation_id"])
             note = f"A supervisor approved request {first['id']} and it was completed. Result:\n{rendered}"
             pending = pending[1:]
+            acted = True
+            ever_acted = True
         elif status == "denied":
             note = f"A supervisor denied request {first['id']}. The action was not performed."
             pending = pending[1:]
@@ -221,17 +285,26 @@ def build_graph(
             "messages": [{"role": "user", "content": RUNTIME_NOTICE + note}],
             "pending": pending,
             "steps": 0,
+            "acted": acted,
+            "ever_acted": ever_acted,
         }
 
     def nudge_node(state: ConvState) -> dict[str, Any]:
         note = {"role": "user", "content": RUNTIME_NOTICE + NUDGE_NOTE, "internal": True}
         return {"messages": [note], "nudged": True}
 
-    def after_agent(state: ConvState) -> Literal["tools", "approval", "nudge", "__end__"]:
+    def claim_node(state: ConvState) -> dict[str, Any]:
+        note = {"role": "user", "content": RUNTIME_NOTICE + CLAIM_NOTE, "internal": True}
+        return {"messages": [note], "claim_checked": True}
+
+    def after_agent(state: ConvState) -> Literal["tools", "approval", "nudge", "claim_check", "__end__"]:
         last = state["messages"][-1]
         steps = state.get("steps", 0)
         if last.get("tool_calls") and steps <= config.max_steps_per_turn:
             return "tools"
+        if last.get("internal") and last.get("role") == "assistant":
+            # Before the approval pause, so a false "applied" written while a request waits is caught.
+            return "claim_check"
         if state.get("pending"):
             return "approval"
         at_front_desk = len(specs) > 1 and (state.get("agent") or entry) == entry
@@ -251,11 +324,21 @@ def build_graph(
     g.add_node("tools", tools_node)
     g.add_node("approval", approval_node)
     g.add_node("nudge", nudge_node)
+    g.add_node("claim_check", claim_node)
     g.add_edge(START, "agent")
     g.add_conditional_edges(
-        "agent", after_agent, {"tools": "tools", "approval": "approval", "nudge": "nudge", "__end__": END}
+        "agent",
+        after_agent,
+        {
+            "tools": "tools",
+            "approval": "approval",
+            "nudge": "nudge",
+            "claim_check": "claim_check",
+            "__end__": END,
+        },
     )
     g.add_edge("tools", "agent")
     g.add_edge("approval", "agent")
     g.add_edge("nudge", "agent")
+    g.add_edge("claim_check", "agent")
     return g.compile(checkpointer=checkpointer)

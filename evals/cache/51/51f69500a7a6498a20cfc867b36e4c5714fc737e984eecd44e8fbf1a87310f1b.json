@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Yes, OUT-2610-05 is correct. Please apply the credit.",
+ "usage": {
+  "input_tokens": 856,
+  "output_tokens": 31
+ },
+ "latency_ms": 371.6,
+ "cost_usd": 0.000147
+}
