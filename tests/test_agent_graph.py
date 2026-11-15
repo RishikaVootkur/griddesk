@@ -9,6 +9,7 @@ from griddesk.agents.graph import (
     NUDGE_NOTE,
     RUNTIME_NOTICE,
     SAFE_REPLY,
+    SAFE_REPLY_PENDING,
     AgentConfig,
     claims_action,
     is_internal_note,
@@ -607,3 +608,101 @@ def test_claims_action_catches_common_false_confirmations(text):
 )
 def test_claims_action_skips_lookups_and_honest_status(text):
     assert not claims_action(text)
+
+
+async def test_honest_reply_after_parking_an_approval_is_sent(sessions):
+    ctx = make_ctx(sessions)
+    acct = one(ctx, WAIVABLE)
+    cust = one(ctx, "select last_name, ssn_last4 from customers where id = :c", c=acct.customer_id)
+    honest = "I have submitted your request to a supervisor. I'll let you know once it has been processed!"
+    runner, tb, fake = await runner_for(
+        ctx,
+        [
+            use("verify_identity", 1, account_id=acct.id, last_name=cust.last_name, ssn_last4=cust.ssn_last4),
+            use("apply_credit", 2, account_id=acct.id, amount="40.00", reason_code="goodwill"),
+            say(honest),
+        ],
+    )
+    res = await runner.send("conv-c7", "I want a credit for the trouble.")
+    assert res.reply == honest and res.awaiting_approval and len(fake.requests) == 3
+    await tb.close()
+
+
+async def test_repeated_claim_while_a_request_is_parked_gets_the_pending_reply(sessions):
+    ctx = make_ctx(sessions)
+    acct = one(ctx, WAIVABLE)
+    cust = one(ctx, "select last_name, ssn_last4 from customers where id = :c", c=acct.customer_id)
+    runner, tb, _fake = await runner_for(
+        ctx,
+        [
+            use("verify_identity", 1, account_id=acct.id, last_name=cust.last_name, ssn_last4=cust.ssn_last4),
+            use("apply_credit", 2, account_id=acct.id, amount="40.00", reason_code="goodwill"),
+            say("Your $40 credit has been applied."),
+            say("Your $40 credit has been applied."),
+        ],
+    )
+    res = await runner.send("conv-c8", "I want a credit for the trouble.")
+    assert res.reply == SAFE_REPLY_PENDING and res.awaiting_approval
+    await tb.close()
+
+
+async def test_restating_an_earlier_action_is_never_contradicted(sessions):
+    ctx = make_ctx(sessions)
+    acct = one(ctx, WAIVABLE)
+    cust = one(ctx, "select last_name, date_of_birth from customers where id = :c", c=acct.customer_id)
+    runner, tb, _fake = await runner_for(
+        ctx,
+        [
+            use(
+                "verify_identity",
+                1,
+                account_id=acct.id,
+                last_name=cust.last_name,
+                date_of_birth=str(cust.date_of_birth),
+            ),
+            use(
+                "apply_credit",
+                2,
+                account_id=acct.id,
+                amount="15.00",
+                reason_code="late_fee_waiver",
+                bill_id=acct.bill_id,
+            ),
+            say("The $15.00 late fee has been waived."),
+            say("Yes, the late fee has been waived."),
+            say("Yes, I waived the late fee earlier in our chat."),
+        ],
+    )
+    await runner.send("conv-c9", "Please waive my late fee.")
+    res = await runner.send("conv-c9", "Just to be sure, is it waived?")
+    # Held once for coaching, then the restatement is sent: never the "nothing has been changed" reply.
+    assert res.reply == "Yes, I waived the late fee earlier in our chat."
+    await tb.close()
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "I have submitted your request to a supervisor. I'll let you know once it has been processed!",
+        "A late fee was already waived on your account back in June.",
+        "A credit for this outage was already applied yesterday.",
+        "Your last payment was applied on October 3.",
+        "I have confirmed your identity.",
+        "If we waived it, you would see it on your bill.",
+    ],
+)
+def test_claims_action_skips_conditions_and_history(text):
+    assert not claims_action(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Thanks for verifying, I have applied the 120 dollar credit.",
+        "Your identity has been verified and your 120 dollar credit has been applied.",
+        "I have applied a 120 dollar credit for the restoration delay.",
+        "I've gone ahead and waived it.",
+    ],
+)
+def test_claims_action_is_not_hidden_by_nearby_lookup_words(text):
+    assert claims_action(text)

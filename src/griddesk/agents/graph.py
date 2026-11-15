@@ -77,10 +77,15 @@ CLAIM_NOTE = (
     "it. If it was done earlier in this conversation, you may say so. Otherwise call the right tool, or tell "
     "the customer plainly what you can and cannot do. Write the reply the customer should see."
 )
-# Sent in place of a second unsupported claim in the same turn: a coaching retry is not a guarantee.
+# Sent in place of a second unsupported claim in the same turn, only when nothing has been changed in the
+# whole conversation, so the sentence is always true.
 SAFE_REPLY = (
-    "I need to correct myself: I have not completed that action. I can check what is possible for your "
-    "account and explain the next step. What would you like me to do?"
+    "I need to correct myself: nothing has been changed on your account in this conversation yet. I can "
+    "check what is possible for your account and explain the next step. What would you like me to do?"
+)
+SAFE_REPLY_PENDING = (
+    "I need to correct myself: your request is waiting for a supervisor, and nothing has been changed on "
+    "your account yet. You will see the outcome here."
 )
 
 
@@ -126,6 +131,7 @@ class ConvState(TypedDict, total=False):
     handed_off: bool  # a transfer_to_* call ran this turn
     acted: bool  # a tool that changes something succeeded (or went to a supervisor) this turn
     claim_checked: bool  # a reply claiming an unperformed action was already held back this turn
+    ever_acted: bool  # a tool that changes something succeeded at some point in this conversation
     error: str | None
 
 
@@ -186,11 +192,17 @@ def build_graph(
         )
         if not unsupported:
             return {"messages": [msg], "steps": steps + 1, "agent": spec.name}
-        msg["internal"] = True  # held back: the customer never sees this reply
         if state.get("claim_checked") or steps + 1 >= config.max_steps_per_turn:
-            # Already coached once this turn (or no step left to retry): send a fixed, true reply instead.
-            safe = {"role": "assistant", "content": SAFE_REPLY, "agent": spec.name}
+            # Already coached once this turn, or no step left to retry.
+            if state.get("ever_acted"):
+                # Something was done earlier in the conversation, so this may be an honest restatement and
+                # no fixed sentence is guaranteed true: send it (D16 limit).
+                return {"messages": [msg], "steps": steps + 1, "agent": spec.name}
+            msg["internal"] = True
+            text = SAFE_REPLY_PENDING if state.get("pending") else SAFE_REPLY
+            safe = {"role": "assistant", "content": text, "agent": spec.name}
             return {"messages": [msg, safe], "steps": steps + 1, "agent": spec.name}
+        msg["internal"] = True  # held back: the customer never sees this reply
         return {"messages": [msg], "steps": steps + 1, "agent": spec.name}
 
     async def tools_node(state: ConvState) -> dict[str, Any]:
@@ -231,6 +243,7 @@ def build_graph(
                     pending.append({"id": result["approval_request_id"], "action": tc.name})
                 elif result.get("ok") and tc.name not in READ_ONLY_TOOLS:
                     update["acted"] = True
+                    update["ever_acted"] = True
                 content = toolbox.render(tc.name, result, state["conversation_id"])
             new.append({"role": "tool", "tool_call_id": tc.id, "name": tc.name, "content": content})
         return {"messages": new, "pending": pending, **update}
@@ -250,6 +263,7 @@ def build_graph(
         result = await toolbox.execute_approved(first["action"], first["id"])
         status = result.get("status")
         acted = bool(state.get("acted"))
+        ever_acted = bool(state.get("ever_acted"))
         if result.get("ok") and status == "executed":
             # The tool result is untrusted data like any other: filter and spotlight it, and keep only
             # the runtime's own sentence outside the block.
@@ -257,6 +271,7 @@ def build_graph(
             note = f"A supervisor approved request {first['id']} and it was completed. Result:\n{rendered}"
             pending = pending[1:]
             acted = True
+            ever_acted = True
         elif status == "denied":
             note = f"A supervisor denied request {first['id']}. The action was not performed."
             pending = pending[1:]
@@ -271,6 +286,7 @@ def build_graph(
             "pending": pending,
             "steps": 0,
             "acted": acted,
+            "ever_acted": ever_acted,
         }
 
     def nudge_node(state: ConvState) -> dict[str, Any]:
