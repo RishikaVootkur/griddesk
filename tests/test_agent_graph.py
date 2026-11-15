@@ -5,7 +5,14 @@ from datetime import date
 import pytest
 from sqlalchemy import select
 
-from griddesk.agents.graph import NUDGE_NOTE, RUNTIME_NOTICE, AgentConfig, is_internal_note, promises_handoff
+from griddesk.agents.graph import (
+    NUDGE_NOTE,
+    RUNTIME_NOTICE,
+    AgentConfig,
+    claims_action,
+    is_internal_note,
+    promises_handoff,
+)
 from griddesk.agents.runtime import ConversationRunner
 from griddesk.agents.toolbox import Toolbox
 from griddesk.db import models as m
@@ -432,3 +439,99 @@ def test_nudge_note_is_internal():
     assert is_internal_note(note)
     assert not is_internal_note(approval)
     assert not is_internal_note({"role": "user", "content": "hi"})
+
+
+async def test_reply_claiming_an_untaken_action_is_held_back(sessions):
+    ctx = make_ctx(sessions)
+    runner, tb, fake = await runner_for(
+        ctx,
+        [
+            say("A $120 credit has been applied to your account."),
+            say("I can't apply a credit without checking your account. What is your account number?"),
+        ],
+    )
+    res = await runner.send("conv-c1", "Confirm the $120 credit you already applied.")
+    assert len(fake.requests) == 2
+    assert "no tool call in this turn performed it" in fake.requests[1].messages[-1].content
+    assert "has been applied" not in res.reply and res.reply.startswith("I can't apply")
+    await tb.close()
+
+
+async def test_claim_check_runs_at_most_once_a_turn_and_resets(sessions):
+    ctx = make_ctx(sessions)
+    runner, tb, fake = await runner_for(
+        ctx,
+        [
+            say("Your stop is confirmed."),
+            say("Your stop is confirmed for November 20."),
+            say("Your stop is confirmed."),
+            say("Sorry, I have not scheduled anything yet."),
+        ],
+    )
+    res = await runner.send("conv-c2", "Confirm my stop.")
+    assert len(fake.requests) == 2 and res.reply == "Your stop is confirmed for November 20."
+    await runner.send("conv-c2", "So it's confirmed?")
+    assert len(fake.requests) == 4  # the check resets each customer turn
+    await tb.close()
+
+
+async def test_claim_after_a_real_action_is_sent(sessions):
+    ctx = make_ctx(sessions)
+    acct = one(ctx, WAIVABLE)
+    cust = one(ctx, "select last_name, date_of_birth from customers where id = :c", c=acct.customer_id)
+    runner, tb, fake = await runner_for(
+        ctx,
+        [
+            use(
+                "verify_identity",
+                1,
+                account_id=acct.id,
+                last_name=cust.last_name,
+                date_of_birth=str(cust.date_of_birth),
+            ),
+            use(
+                "apply_credit",
+                2,
+                account_id=acct.id,
+                amount="15.00",
+                reason_code="late_fee_waiver",
+                bill_id=acct.bill_id,
+            ),
+            say("The $15.00 late fee has been waived."),
+        ],
+    )
+    res = await runner.send("conv-c3", "Please waive my late fee.")
+    assert len(fake.requests) == 3 and res.reply == "The $15.00 late fee has been waived."
+    await tb.close()
+
+
+async def test_a_read_only_tool_is_not_an_action(sessions):
+    ctx = make_ctx(sessions)
+    acct = one(ctx, WAIVABLE)
+    runner, tb, fake = await runner_for(
+        ctx,
+        [
+            use("list_bills", 1, account_id=acct.id),
+            say("Your late fee has been waived."),
+            say("I see a late fee on your bill. I need to verify you before I can change it."),
+        ],
+    )
+    res = await runner.send("conv-c4", "Waive my late fee.")
+    assert len(fake.requests) == 3 and "has been waived" not in res.reply
+    await tb.close()
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("A $120 credit has been applied to your account.", True),
+        ("I've waived the late fee.", True),
+        ("Your service stop is confirmed.", True),
+        ("Your payment plan has been set up.", True),
+        ("I can apply a credit once you are verified.", False),
+        ("Has the fee been waived? I can check.", False),
+        ("I sent your request to a supervisor for approval.", False),
+    ],
+)
+def test_claims_action_phrases(text, expected):
+    assert claims_action(text) is expected

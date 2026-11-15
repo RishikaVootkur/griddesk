@@ -406,7 +406,7 @@ def _new_agent_messages(new: list[dict[str, Any]], reply: str) -> list[dict[str,
     out = [
         {"text": x["content"], "agent": x.get("agent")}
         for x in new
-        if x.get("role") == "assistant" and x.get("content")
+        if x.get("role") == "assistant" and x.get("content") and not is_internal_note(x)
     ]
     return out or ([{"text": reply, "agent": None}] if reply else [])
 

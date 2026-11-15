@@ -2,7 +2,7 @@
  "model": "ollama:qwen3:8b",
  "tool_calls": [
   {
-   "id": "call_m4zy1vjb",
+   "id": "call_32ut32an",
    "name": "get_account_summary",
    "arguments": {
     "account_id": "100091"
@@ -10,8 +10,8 @@
   }
  ],
  "usage": {
-  "input_tokens": 4027,
+  "input_tokens": 4185,
   "output_tokens": 26
  },
- "latency_ms": 12840.9
+ "latency_ms": 30214.1
 }

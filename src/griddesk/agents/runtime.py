@@ -142,6 +142,8 @@ class ConversationRunner:
                 "steps": 0,
                 "nudged": False,
                 "handed_off": False,
+                "acted": False,
+                "claim_checked": False,
                 "error": None,
             },
             self._cfg(conversation_id),
@@ -182,8 +184,9 @@ class ConversationRunner:
     async def _result(self, conversation_id: str, start: int) -> TurnResult:
         snap = await self.graph.aget_state(self._cfg(conversation_id))
         msgs = snap.values.get("messages", [])[start:]
-        texts = [m["content"] for m in msgs if m.get("role") == "assistant" and m.get("content")]
-        agents = [m["agent"] for m in msgs if m.get("role") == "assistant" and m.get("agent")]
+        shown = [m for m in msgs if m.get("role") == "assistant" and not m.get("internal")]
+        texts = [m["content"] for m in shown if m.get("content")]
+        agents = [m["agent"] for m in shown if m.get("agent")]
         pending = None
         for task in snap.tasks:
             for intr in task.interrupts:
