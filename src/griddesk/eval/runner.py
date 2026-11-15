@@ -52,6 +52,7 @@ from griddesk.guardrails import Defenses
 from griddesk.guardrails.action_guard import ActionGuard
 from griddesk.logging import redact_text
 from griddesk.mcp_servers import server_factories
+from griddesk.observability.live import live
 from griddesk.runtime import Clock, IdGenerator
 from griddesk.tools import approvals
 from griddesk.tools.common import ToolContext
@@ -442,7 +443,11 @@ async def retry_conflicts[T](
                     raise TrialConflict(f"{label} still blocked after {retries} retries") from e
         # Outside the semaphore, so the trial holding the row can finish. Calls made before the
         # conflict replay from the cache on the retry.
-        await asyncio.sleep(backoff_s * random.uniform(1.0, 2.0))
+        live.lock_wait_begin()
+        try:
+            await asyncio.sleep(backoff_s * random.uniform(1.0, 2.0))
+        finally:
+            live.lock_wait_end()
     raise AssertionError("unreachable")
 
 

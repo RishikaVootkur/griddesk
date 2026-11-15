@@ -110,6 +110,7 @@ def execute_suite(
     from griddesk.eval.tasks import load_tasks
     from griddesk.gateway import build_gateway
     from griddesk.gateway.types import CacheMode
+    from griddesk.observability.live import LIVE_STATUS, live
 
     suite_path = Path(suite) if suite.endswith(".yaml") else REPO_ROOT / "evals" / suite
     selected = load_tasks(suite_path)
@@ -143,13 +144,17 @@ def execute_suite(
         mark = "PASS" if r.success else ("ERR " if r.error else "fail")
         err = f" error={r.error[:80]}" if r.error else ""
         typer.echo(f"  {mark} {r.task_id} t{r.trial} turns={r.turns} calls={len(r.tool_calls)}{err}")
+        outcome = "pass" if r.success else ("error" if r.error else "fail")
+        live.trial(r.task_id, r.trial, outcome, r.error or "")
 
     typer.echo(f"Running {len(selected)} tasks x {trials} trials on {model} ({design}, enforce={enforce})")
+    live.start(REPO_ROOT / LIVE_STATUS, label=label, model=model, total=len(selected) * trials)
 
     async def go() -> dict[str, Any]:
         try:
             return await run_suite(selected, cfg, gw, get_engine(), progress)
         finally:
+            live.finish()
             await gw.aclose()
 
     return asyncio.run(go())

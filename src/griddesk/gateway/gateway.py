@@ -28,6 +28,7 @@ from griddesk.gateway.types import (
     LLMResponse,
     ProviderError,
 )
+from griddesk.observability.live import live
 from griddesk.observability.tracing import record_llm_call, span
 
 DEFAULT_CHAIN = ["gemini:gemini-3.5-flash-lite", "groq:qwen/qwen3.8-27b", "ollama:qwen3:8b"]
@@ -237,7 +238,11 @@ class Gateway:
                         quota_waits += 1
                         waited += pause
                         attempt -= 1  # waiting for quota is not a failed attempt
-                        await self.sleep(pause)
+                        wait_id = live.quota_wait_begin(pause)
+                        try:
+                            await self.sleep(pause)
+                        finally:
+                            live.quota_wait_end(wait_id)
                         continue
                 limit = self.max_retries if e.retry_limit is None else min(e.retry_limit, self.max_retries)
                 if not e.retryable or attempt > limit:
