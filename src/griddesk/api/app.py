@@ -36,7 +36,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sse_starlette.sse import EventSourceResponse
 
-from griddesk.agents.graph import AgentConfig, is_internal_note
+from griddesk.agents.graph import RUNTIME_NOTICE, AgentConfig, is_internal_note
 from griddesk.agents.runtime import ConversationRunner, TurnResult
 from griddesk.agents.toolbox import Toolbox
 from griddesk.config import REPO_ROOT, get_settings
@@ -214,11 +214,11 @@ def reader(
     token: str | None = Header(default=None, alias=TOKEN_HEADER),
     authorization: str | None = Header(default=None),
 ) -> str:
-    """The conversation's customer, or an operator (the console reads transcripts)."""
+    """Who is reading: the conversation's customer, or an operator (the console reads transcripts)."""
     if _token_ok(_conversation(st, conv_id), token):
-        return conv_id
+        return "customer"
     operator(authorization)
-    return conv_id
+    return "operator"
 
 
 class NewConversation(BaseModel):
@@ -438,7 +438,7 @@ def list_conversations(st: AppState = Depends(state), _: str = Depends(operator)
 
 @app.get("/api/conversations/{conv_id}")
 async def get_conversation(
-    conv_id: str, st: AppState = Depends(state), _: str = Depends(reader)
+    conv_id: str, st: AppState = Depends(state), viewer: str = Depends(reader)
 ) -> dict[str, Any]:
     try:
         await resume_if_decided(st, conv_id, wait=False)
@@ -451,8 +451,13 @@ async def get_conversation(
         if is_internal_note(x):
             continue
         if role == "user":
-            kind = "system" if content.startswith("RUNTIME NOTICE") else "customer"
-            out.append({"role": kind, "text": content, "agent": None})
+            if content.startswith(RUNTIME_NOTICE):
+                # A runtime notice carries raw tool results for the agent. Operators may audit it; the
+                # customer only sees the agent's own reply to it.
+                if viewer == "operator":
+                    out.append({"role": "system", "text": content, "agent": None})
+                continue
+            out.append({"role": "customer", "text": content, "agent": None})
         elif role == "assistant" and content:
             out.append({"role": "agent", "text": content, "agent": x.get("agent")})
     pending = await st.runner.awaiting_approval(conv_id)

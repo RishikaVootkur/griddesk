@@ -4,6 +4,14 @@
 
 Everything runs on free tiers: Gemini, Groq and a local Ollama model.
 
+## Demo video
+
+A 3-minute captioned walkthrough of the running app: a customer asks for a credit, a supervisor approves it, and the eval dashboard shows the test results.
+
+[![GridDesk walkthrough video: click to play](docs/img/walkthrough.jpg)](docs/video/griddesk-walkthrough.mp4)
+
+[Play the walkthrough (MP4, 3:20)](docs/video/griddesk-walkthrough.mp4)
+
 <!-- RESULTS:HEADLINE -->
 | | Result |
 |---|---|

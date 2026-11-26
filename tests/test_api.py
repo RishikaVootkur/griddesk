@@ -167,6 +167,11 @@ async def test_chat_stream_approval_queue_and_decision(sessions):
     detail = (await client.get(f"/api/conversations/{conv}", headers=auth)).json()
     assert detail["awaiting_approval"] is None
     assert [m["role"] for m in detail["messages"]][:2] == ["customer", "agent"]
+    # The runtime notice holds raw tool results for the agent: operators can audit it, customers never see it.
+    assert all(m["role"] != "system" and "RUNTIME NOTICE" not in m["text"] for m in detail["messages"])
+    op_view = (await client.get(f"/api/conversations/{conv}", headers=OP)).json()
+    notices = [m for m in op_view["messages"] if m["role"] == "system"]
+    assert notices and notices[0]["text"].startswith("RUNTIME NOTICE")
     audit = (await client.get("/api/audit", params={"outcome": "pending_approval"}, headers=OP)).json()
     assert audit and audit[0]["action"] == "apply_credit"
     again = await client.post(
