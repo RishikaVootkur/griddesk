@@ -122,6 +122,7 @@ Response `200`: `ConversationDetail`
 ```
 
 - `messages[].role` is `"customer"`, `"agent"` or `"system"`. `messages[].agent` is a string or `null`.
+- `"system"` messages are runtime notices to the agent (for example the result of an approved action). Only the operator token sees them; the customer gets the agent's reply instead.
 - `awaiting_approval` is `{approval_request_id, action}`, or `null` when nothing is pending.
 
 ## Approvals

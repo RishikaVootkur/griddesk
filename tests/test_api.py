@@ -167,6 +167,11 @@ async def test_chat_stream_approval_queue_and_decision(sessions):
     detail = (await client.get(f"/api/conversations/{conv}", headers=auth)).json()
     assert detail["awaiting_approval"] is None
     assert [m["role"] for m in detail["messages"]][:2] == ["customer", "agent"]
+    # The runtime notice holds raw tool results for the agent: operators can audit it, customers never see it.
+    assert all(m["role"] != "system" and "RUNTIME NOTICE" not in m["text"] for m in detail["messages"])
+    op_view = (await client.get(f"/api/conversations/{conv}", headers=OP)).json()
+    notices = [m for m in op_view["messages"] if m["role"] == "system"]
+    assert notices and notices[0]["text"].startswith("RUNTIME NOTICE")
     audit = (await client.get("/api/audit", params={"outcome": "pending_approval"}, headers=OP)).json()
     assert audit and audit[0]["action"] == "apply_credit"
     again = await client.post(
@@ -433,6 +438,18 @@ def test_run_summary_reports_policy_off_when_defenses_are_off():
     off = api.run_summary(Path("x.json"), {**run, "config": {**base, "defenses": {"in_tool_policy": False}}})
     on = api.run_summary(Path("x.json"), {**run, "config": base})
     assert off["enforce_policy"] is False and on["enforce_policy"] is True
+
+
+async def test_customer_hears_something_when_reply_to_decision_fails(sessions):
+    st = await make_state(sessions)
+    st.provider.replies = st.provider.replies[:-1]  # type: ignore[attr-defined]
+    client = client_for(st)
+    conv, auth, apr = await pause_for_approval(client)
+    await client.post(f"/api/approvals/{apr}/decision", json={"decision": "deny"}, headers=OP)
+    detail = (await client.get(f"/api/conversations/{conv}", headers=auth)).json()
+    assert detail["messages"][-1] == {"role": "system", "text": api.SUPERVISOR_REVIEWED, "agent": None}
+    assert all("RUNTIME NOTICE" not in m["text"] for m in detail["messages"])
+    await st.toolbox.close()
 
 
 async def test_held_back_claim_never_reaches_the_customer(sessions):
