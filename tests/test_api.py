@@ -438,3 +438,15 @@ def test_run_summary_reports_policy_off_when_defenses_are_off():
     off = api.run_summary(Path("x.json"), {**run, "config": {**base, "defenses": {"in_tool_policy": False}}})
     on = api.run_summary(Path("x.json"), {**run, "config": base})
     assert off["enforce_policy"] is False and on["enforce_policy"] is True
+
+
+async def test_customer_hears_something_when_reply_to_decision_fails(sessions):
+    st = await make_state(sessions)
+    st.provider.replies = st.provider.replies[:-1]  # type: ignore[attr-defined]
+    client = client_for(st)
+    conv, auth, apr = await pause_for_approval(client)
+    await client.post(f"/api/approvals/{apr}/decision", json={"decision": "deny"}, headers=OP)
+    detail = (await client.get(f"/api/conversations/{conv}", headers=auth)).json()
+    assert detail["messages"][-1] == {"role": "system", "text": api.SUPERVISOR_REVIEWED, "agent": None}
+    assert all("RUNTIME NOTICE" not in m["text"] for m in detail["messages"])
+    await st.toolbox.close()

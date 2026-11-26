@@ -436,6 +436,9 @@ def list_conversations(st: AppState = Depends(state), _: str = Depends(operator)
         ]
 
 
+SUPERVISOR_REVIEWED = "A supervisor reviewed your request. Send a message to hear the outcome."
+
+
 @app.get("/api/conversations/{conv_id}")
 async def get_conversation(
     conv_id: str, st: AppState = Depends(state), viewer: str = Depends(reader)
@@ -446,6 +449,7 @@ async def get_conversation(
         log.exception("resume on read failed", conversation_id=conv_id)
     msgs = await st.runner.messages(conv_id)
     out = []
+    unanswered_notice = False
     for x in msgs:
         role, content = x.get("role"), x.get("content") or ""
         if is_internal_note(x):
@@ -456,10 +460,15 @@ async def get_conversation(
                 # customer only sees the agent's own reply to it.
                 if viewer == "operator":
                     out.append({"role": "system", "text": content, "agent": None})
+                unanswered_notice = True
                 continue
             out.append({"role": "customer", "text": content, "agent": None})
         elif role == "assistant" and content:
             out.append({"role": "agent", "text": content, "agent": x.get("agent")})
+            unanswered_notice = False
+    if unanswered_notice and viewer == "customer":
+        # The agent's reply to a decision failed (provider error, budget), so say something rather than nothing.
+        out.append({"role": "system", "text": SUPERVISOR_REVIEWED, "agent": None})
     pending = await st.runner.awaiting_approval(conv_id)
     return {
         "conversation_id": conv_id,
