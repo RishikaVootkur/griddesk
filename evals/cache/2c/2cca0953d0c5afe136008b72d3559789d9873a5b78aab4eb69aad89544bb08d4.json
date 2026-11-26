@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your payment plan has been successfully set up with five monthly installments of $130.96 each, starting on November 15, 2026. Your disconnection has been canceled, and your power will remain on as long as the payments are made on time. Let us know if you need anything else. Thank you, goodbye!",
+ "usage": {
+  "input_tokens": 4787,
+  "output_tokens": 74
+ },
+ "latency_ms": 47583.9
+}

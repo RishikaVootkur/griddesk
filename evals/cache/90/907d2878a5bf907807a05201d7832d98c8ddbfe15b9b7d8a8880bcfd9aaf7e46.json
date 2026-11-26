@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Please go ahead and set up that five‑month payment plan so my power won’t be disconnected.###STOP###",
+ "usage": {
+  "input_tokens": 899,
+  "output_tokens": 49
+ },
+ "latency_ms": 590.0,
+ "cost_usd": 0.00016425
+}

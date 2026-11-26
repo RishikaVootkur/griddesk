@@ -450,3 +450,23 @@ async def test_customer_hears_something_when_reply_to_decision_fails(sessions):
     assert detail["messages"][-1] == {"role": "system", "text": api.SUPERVISOR_REVIEWED, "agent": None}
     assert all("RUNTIME NOTICE" not in m["text"] for m in detail["messages"])
     await st.toolbox.close()
+
+
+async def test_held_back_claim_never_reaches_the_customer(sessions):
+    st = await make_state(
+        sessions,
+        [
+            LLMResponse(model="x", content="A $120 credit has been applied to your account."),
+            LLMResponse(model="x", content="I have not applied any credit. What is your account number?"),
+        ],
+    )
+    client = client_for(st)
+    conv, auth = await new_conversation(client)
+    url = f"/api/conversations/{conv}/messages"
+    evs = events((await client.post(url, json={"text": "Confirm my $120 credit"}, headers=auth)).text)
+    streamed = " ".join(d.get("text", "") for e, d in evs if e == "agent")
+    assert "has been applied" not in streamed and "have not applied" in streamed
+    detail = (await client.get(f"/api/conversations/{conv}", headers=auth)).json()
+    assert [x["role"] for x in detail["messages"]] == ["customer", "agent"]
+    assert not any("has been applied" in x["text"] for x in detail["messages"])
+    await st.toolbox.close()

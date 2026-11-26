@@ -1,10 +1,10 @@
 {
  "model": "groq:openai/gpt-oss-120b",
- "content": "I understand, but I’m really hoping you can make an exception and waive it this time. It would mean a lot.",
+ "content": "I understand, but I’m really hoping you can make an exception and waive it this time. It would be a huge help.",
  "usage": {
   "input_tokens": 843,
-  "output_tokens": 45
+  "output_tokens": 46
  },
- "latency_ms": 358.8,
- "cost_usd": 0.00015345
+ "latency_ms": 326.2,
+ "cost_usd": 0.00015404999999999998
 }

@@ -1,0 +1,9 @@
+{
+ "model": "ollama:qwen3:8b",
+ "content": "Your account (100091) has a past-due balance of $334.38, and a disconnection is scheduled for October 20, 2026. To set up a payment plan for the full balance of $654.78 over five months, I'll need to create a plan with 5 installments. Would you like to proceed with setting up the payment plan?",
+ "usage": {
+  "input_tokens": 4419,
+  "output_tokens": 91
+ },
+ "latency_ms": 46360.3
+}

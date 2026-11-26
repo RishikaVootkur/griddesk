@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Please go ahead and process the full $64.20 payment. Thank you.###STOP###",
+ "usage": {
+  "input_tokens": 988,
+  "output_tokens": 52
+ },
+ "latency_ms": 325.2,
+ "cost_usd": 0.00017939999999999997
+}

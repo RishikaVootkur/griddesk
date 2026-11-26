@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Fine, let’s set up a payment plan then. ###STOP###",
+ "usage": {
+  "input_tokens": 928,
+  "output_tokens": 34
+ },
+ "latency_ms": 886.5,
+ "cost_usd": 0.0001596
+}

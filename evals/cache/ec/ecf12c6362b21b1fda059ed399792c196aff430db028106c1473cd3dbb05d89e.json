@@ -1,0 +1,10 @@
+{
+ "model": "groq:openai/gpt-oss-120b",
+ "content": "Okay, what should I do next to resolve this payment?",
+ "usage": {
+  "input_tokens": 1103,
+  "output_tokens": 104
+ },
+ "latency_ms": 579.1,
+ "cost_usd": 0.00022784999999999998
+}
