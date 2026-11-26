@@ -467,7 +467,7 @@ async def get_conversation(
             out.append({"role": "agent", "text": content, "agent": x.get("agent")})
             unanswered_notice = False
     if unanswered_notice and viewer == "customer":
-        # The agent's reply to a decision failed (provider error, budget), so say something rather than nothing.
+        # The reply to a decision failed (provider error, budget): say something rather than nothing.
         out.append({"role": "system", "text": SUPERVISOR_REVIEWED, "agent": None})
     pending = await st.runner.awaiting_approval(conv_id)
     return {
